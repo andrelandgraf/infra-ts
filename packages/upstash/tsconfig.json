@@ -1,0 +1,10 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"rootDir": "src",
+		"outDir": "dist",
+		"baseUrl": ".",
+		"paths": { "@infra-ts/core": ["../core/src/index.ts"] }
+	},
+	"include": ["src/**/*.ts"]
+}

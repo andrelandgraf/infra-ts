@@ -1,0 +1,107 @@
+{
+	"name": "infra-ts",
+	"version": "0.1.0",
+	"description": "infra-ts — typed, live-reconciled infrastructure & config as code (no attribute state). An infra.ts file, a thin REST provider system, and a CLI/SDK for Neon, Vercel and beyond.",
+	"keywords": [
+		"infra-ts",
+		"iac",
+		"infrastructure-as-code",
+		"config-as-code",
+		"neon",
+		"vercel",
+		"typescript",
+		"cli"
+	],
+	"license": "Apache-2.0",
+	"author": "Andre Landgraf <andre@neon.tech>",
+	"type": "module",
+	"bin": {
+		"infra-ts": "./dist/cli.js"
+	},
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./src/index.ts"
+		},
+		"./neon": {
+			"types": "./src/neon.ts",
+			"default": "./src/neon.ts"
+		},
+		"./vercel": {
+			"types": "./src/vercel.ts",
+			"default": "./src/vercel.ts"
+		},
+		"./upstash": {
+			"types": "./src/upstash.ts",
+			"default": "./src/upstash.ts"
+		},
+		"./resend": {
+			"types": "./src/resend.ts",
+			"default": "./src/resend.ts"
+		},
+		"./mux": {
+			"types": "./src/mux.ts",
+			"default": "./src/mux.ts"
+		},
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"exports": {
+			".": {
+				"types": "./dist/index.d.ts",
+				"import": "./dist/index.js"
+			},
+			"./neon": {
+				"types": "./dist/neon.d.ts",
+				"import": "./dist/neon.js"
+			},
+			"./vercel": {
+				"types": "./dist/vercel.d.ts",
+				"import": "./dist/vercel.js"
+			},
+			"./upstash": {
+				"types": "./dist/upstash.d.ts",
+				"import": "./dist/upstash.js"
+			},
+			"./resend": {
+				"types": "./dist/resend.d.ts",
+				"import": "./dist/resend.js"
+			},
+			"./mux": {
+				"types": "./dist/mux.d.ts",
+				"import": "./dist/mux.js"
+			},
+			"./package.json": "./package.json"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsup",
+		"dev": "bun src/cli.ts",
+		"typecheck": "tsc -p tsconfig.json --noEmit"
+	},
+	"dependencies": {
+		"chalk": "^5.4.1",
+		"commander": "^13.1.0",
+		"esbuild": "^0.24.0",
+		"fflate": "^0.8.2",
+		"jiti": "^2.7.0"
+	},
+	"devDependencies": {
+		"@infra-ts/core": "workspace:*",
+		"@infra-ts/mux": "workspace:*",
+		"@infra-ts/neon": "workspace:*",
+		"@infra-ts/resend": "workspace:*",
+		"@infra-ts/runtime": "workspace:*",
+		"@infra-ts/upstash": "workspace:*",
+		"@infra-ts/vercel": "workspace:*"
+	},
+	"engines": {
+		"node": ">=20"
+	}
+}

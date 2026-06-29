@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+
+# infra-ts identity link files (per-developer, per-environment pointers)
+.infra
+.infra.*
+
+# Local env files (may contain secrets)
+.env
+.env.*
+!.env.example
+
+# Scratch space used by e2e tests
+.e2e-tmp/

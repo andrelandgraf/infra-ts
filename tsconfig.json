@@ -1,0 +1,23 @@
+{
+	"extends": "./tsconfig.base.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"baseUrl": ".",
+		"paths": {
+			"@infra-ts/core": ["packages/core/src/index.ts"],
+			"@infra-ts/neon": ["packages/neon/src/index.ts"],
+			"@infra-ts/vercel": ["packages/vercel/src/index.ts"],
+			"@infra-ts/upstash": ["packages/upstash/src/index.ts"],
+			"@infra-ts/resend": ["packages/resend/src/index.ts"],
+			"@infra-ts/mux": ["packages/mux/src/index.ts"],
+			"@infra-ts/runtime": ["packages/runtime/src/index.ts"],
+			"infra-ts": ["packages/cli/src/index.ts"],
+			"infra-ts/*": ["packages/cli/src/*"]
+		}
+	},
+	"include": [
+		"packages/*/src/**/*.ts",
+		"packages/*/test/**/*.ts",
+		"test/**/*.ts"
+	]
+}

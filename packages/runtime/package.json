@@ -1,0 +1,49 @@
+{
+	"name": "@infra-ts/runtime",
+	"version": "0.1.0",
+	"description": "The infra-ts engine: load infra.ts, read/write the .infra link file, and plan/apply/destroy a config across providers with typed env and lifecycle hooks.",
+	"keywords": [
+		"infra-ts",
+		"iac",
+		"engine",
+		"runtime"
+	],
+	"license": "Apache-2.0",
+	"author": "Andre Landgraf <andre@neon.tech>",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./src/index.ts"
+		},
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"main": "./dist/index.js",
+		"types": "./dist/index.d.ts",
+		"exports": {
+			".": {
+				"types": "./dist/index.d.ts",
+				"import": "./dist/index.js"
+			},
+			"./package.json": "./package.json"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsup src/index.ts --format esm --dts --clean --sourcemap --tsconfig tsconfig.build.json",
+		"typecheck": "tsc -p tsconfig.json --noEmit"
+	},
+	"dependencies": {
+		"@infra-ts/core": "workspace:*",
+		"jiti": "^2.7.0"
+	},
+	"engines": {
+		"node": ">=20"
+	}
+}

@@ -1,0 +1,14 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"paths": {
+			"@infra-ts/core": ["../core/dist/index.d.ts"],
+			"@infra-ts/neon": ["../neon/dist/index.d.ts"],
+			"@infra-ts/vercel": ["../vercel/dist/index.d.ts"],
+			"@infra-ts/upstash": ["../upstash/dist/index.d.ts"],
+			"@infra-ts/resend": ["../resend/dist/index.d.ts"],
+			"@infra-ts/mux": ["../mux/dist/index.d.ts"],
+			"@infra-ts/runtime": ["../runtime/dist/index.d.ts"]
+		}
+	}
+}
