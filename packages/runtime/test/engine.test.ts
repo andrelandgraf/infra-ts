@@ -62,18 +62,18 @@ describe("engine: apply", () => {
 					new FakeEntity({
 						name: "a",
 						hooks: {
-							beforeApply: () => {
-								calls.push("before");
+							beforeApply: ({ rootDir, cwd }) => {
+								calls.push(`before:${rootDir === dir && cwd === dir}`);
 							},
-							afterApply: ({ env }) => {
-								calls.push(`after:${env.value}`);
+							afterApply: ({ env, rootDir }) => {
+								calls.push(`after:${env.value}:${rootDir === dir}`);
 							},
 						},
 					}),
 				],
 			});
 			await apply(infra, { rootDir: dir, environment: "test" });
-			expect(calls).toEqual(["before", "after:v-a"]);
+			expect(calls).toEqual(["before:true", "after:v-a:true"]);
 		} finally {
 			cleanup();
 		}

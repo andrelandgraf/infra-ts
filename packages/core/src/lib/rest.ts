@@ -1,4 +1,11 @@
+import type { Exec } from "./entity.js";
 import { ErrorCode, InfraError } from "./errors.js";
+
+/** Minimal `fetch` shape the REST client uses (the global `fetch` satisfies it; easy to fake). */
+export type FetchLike = (
+	input: string | URL | Request,
+	init?: RequestInit,
+) => Promise<Response>;
 
 /** How a REST client authenticates: bearer token, HTTP basic, or a raw header. */
 export type RestAuth =
@@ -16,7 +23,13 @@ export interface RestClientOptions {
 	/** Provider name, used to tag {@link InfraError} details. */
 	provider: string;
 	/** Injectable fetch (tests). Defaults to the global `fetch`. */
-	fetch?: typeof fetch;
+	fetch?: FetchLike;
+	/**
+	 * Called once when a request returns `401`. Return fresh auth to retry the request with it
+	 * (e.g. after refreshing a CLI's cached OAuth token), or `undefined` to fail as usual. See
+	 * {@link refreshOnUnauthorized}.
+	 */
+	onUnauthorized?: () => Promise<RestAuth | undefined>;
 }
 
 export interface RequestOptions {
@@ -62,14 +75,16 @@ function authHeader(auth: RestAuth): { name: string; value: string } {
 export function createRestClient(options: RestClientOptions): RestClient {
 	const doFetch = options.fetch ?? globalThis.fetch;
 	const base = options.baseUrl.replace(/\/$/, "");
-	const auth = authHeader(options.auth);
+	let currentAuth = options.auth;
 
 	async function request<T>(
 		method: string,
 		path: string,
 		reqOptions: RequestOptions = {},
+		attempt = 0,
 	): Promise<T> {
 		const url = buildUrl(base, path, reqOptions.query);
+		const auth = authHeader(currentAuth);
 		const headers: Record<string, string> = {
 			[auth.name]: auth.value,
 			Accept: "application/json",
@@ -104,6 +119,15 @@ export function createRestClient(options: RestClientOptions): RestClient {
 			return null as T;
 		}
 
+		// Self-heal a stale CLI-cache token: refresh once and retry with fresh auth.
+		if (response.status === 401 && options.onUnauthorized && attempt === 0) {
+			const refreshed = await options.onUnauthorized();
+			if (refreshed) {
+				currentAuth = refreshed;
+				return request<T>(method, path, reqOptions, attempt + 1);
+			}
+		}
+
 		const text = await response.text();
 		const parsed = parseBody(text);
 		if (!response.ok) {
@@ -130,6 +154,42 @@ export function createRestClient(options: RestClientOptions): RestClient {
 		patch: (path, opts) => request("PATCH", path, opts),
 		put: (path, opts) => request("PUT", path, opts),
 		delete: (path, opts) => request("DELETE", path, opts),
+	};
+}
+
+/**
+ * Build an {@link RestClientOptions.onUnauthorized} handler for a token sourced from a provider
+ * CLI's cache (e.g. `neonctl`'s short-lived OAuth access token). On a `401` it runs the CLI's
+ * refresh command via `exec` (which rewrites the cache), re-reads the token, and returns fresh
+ * bearer auth so the request retries once.
+ *
+ * Gated to only fire when the **in-use token equals the cached token** — an explicit env-var key
+ * (`reread() !== current`) or a missing `exec` returns `undefined`, so explicit credentials fail
+ * fast instead of triggering a pointless refresh.
+ */
+export function refreshOnUnauthorized(opts: {
+	/** The runtime exec capability (`ctx.exec`). */
+	exec: Exec | undefined;
+	/** Command that refreshes the CLI cache, e.g. `["neonctl", "me"]`. */
+	refresh: string[];
+	/** Re-read the (possibly refreshed) token from the CLI cache. */
+	reread: () => string | undefined;
+	/** The token currently in use. */
+	current: string;
+}): (() => Promise<RestAuth | undefined>) | undefined {
+	const { exec, refresh, reread, current } = opts;
+	if (!exec) return undefined;
+	if (reread() !== current) return undefined; // explicit key — don't refresh
+	return async () => {
+		try {
+			await exec(refresh);
+		} catch {
+			return undefined;
+		}
+		const fresh = reread();
+		return fresh && fresh !== current
+			? { type: "bearer", token: fresh }
+			: undefined;
 	};
 }
 

@@ -72,7 +72,7 @@ export function neonTokenFromBag(
 }
 
 /** Read the OAuth access token cached by neonctl, if present and readable. */
-function readNeonctlToken(): string | undefined {
+export function readNeonctlToken(): string | undefined {
 	const path = join(homedir(), ".config", "neonctl", "credentials.json");
 	try {
 		const raw = readFileSync(path, "utf8");

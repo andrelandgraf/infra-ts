@@ -3,6 +3,7 @@ import {
 	ErrorCode,
 	InfraError,
 	isInfraError,
+	type RestAuth,
 	type RestClient,
 } from "@infra-ts/core";
 
@@ -159,6 +160,7 @@ export class NeonApi {
 		token: string;
 		apiHost: string;
 		fetch?: typeof fetch;
+		onUnauthorized?: () => Promise<RestAuth | undefined>;
 	}) {
 		this.token = options.token;
 		this.apiHost = options.apiHost.replace(/\/$/, "");
@@ -168,6 +170,9 @@ export class NeonApi {
 			baseUrl: options.apiHost,
 			auth: { type: "bearer", token: options.token },
 			...(options.fetch ? { fetch: options.fetch } : {}),
+			...(options.onUnauthorized
+				? { onUnauthorized: options.onUnauthorized }
+				: {}),
 		});
 	}
 

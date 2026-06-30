@@ -258,7 +258,9 @@ new NeonPostgres({
 });
 ```
 
-Shell hooks run **non-interactively** (stdin detached, `CI=1` set) with the resolved env injected.
+Shell hooks run **non-interactively** (stdin detached, `CI=1` set) with the resolved env injected,
+in the config's root dir. Function hooks run in-process, so resolve relative paths against the
+`rootDir`/`cwd` on the hook context (`afterApply: ({ env, rootDir }) => migrate(join(rootDir, "drizzle"))`).
 
 ### Renames
 
@@ -832,6 +834,12 @@ Command-backed entities still obey the full contract: persist **only identity st
 CLI's output id/url; don't adopt its `.vercel` snapshot), stay **idempotent** (content hash, §11.4),
 and emit **typed env**. So REST vs CLI is a free, per-entity choice. `VercelDeployment` is the first
 example.
+
+The same `exec` capability powers **self-healing auth**: `createRestClient` takes an
+`onUnauthorized` hook, and the reusable `refreshOnUnauthorized({ exec, refresh, reread, current })`
+util refreshes a provider CLI's cached OAuth token on a `401` (e.g. Neon runs `neonctl me`,
+re-reads the cache, retries once) — only when the in-use token is the cached one, so explicit keys
+fail fast.
 
 ---
 

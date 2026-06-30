@@ -57,25 +57,39 @@ export type Hook<Ctx> =
  * with a `before*`/`after*` phase. Declarative data — not imperatively registered. Hooks never run
  * during `plan`/`status`.
  */
+/**
+ * Common fields every hook receives. `rootDir`/`cwd` (same value) anchor relative paths to the
+ * config's root — function hooks should resolve paths against these, since (unlike shell hooks,
+ * which run with `cwd: rootDir`) they execute in-process with the ambient `process.cwd()`.
+ */
+export interface HookContext {
+	environment: string;
+	/** The directory containing the resolved `infra.ts`. */
+	rootDir: string;
+	/** Alias of `rootDir`, for readability. */
+	cwd: string;
+}
+
 export interface EntityHooks<
 	Env extends Record<string, string>,
 	State extends Record<string, unknown>,
 > {
 	/** Before this entity is provisioned during `infra apply`. */
-	beforeApply?: Hook<{ environment: string }>;
+	beforeApply?: Hook<HookContext>;
 	/** After provision + env resolution; receives the full provision result (typed env). */
-	afterApply?: Hook<{
-		environment: string;
-		action: ChangeAction;
-		state: State;
-		env: Env;
-	}>;
+	afterApply?: Hook<
+		HookContext & {
+			action: ChangeAction;
+			state: State;
+			env: Env;
+		}
+	>;
 	/** Around `infra checkout` (pulling typed env from the live remote). */
-	beforeCheckout?: Hook<{ environment: string }>;
-	afterCheckout?: Hook<{ environment: string; env: Env }>;
+	beforeCheckout?: Hook<HookContext>;
+	afterCheckout?: Hook<HookContext & { env: Env }>;
 	/** Around `infra destroy` (deprovision). */
-	beforeDestroy?: Hook<{ environment: string }>;
-	afterDestroy?: Hook<{ environment: string }>;
+	beforeDestroy?: Hook<HookContext>;
+	afterDestroy?: Hook<HookContext>;
 }
 
 /** Common fields every entity's options object carries (alongside provider-specific config). */

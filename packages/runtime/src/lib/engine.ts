@@ -162,7 +162,11 @@ export async function apply(
 			exec: createExec(credentialsEnv(credentials)),
 		};
 
-		await runHook(entity.hooks?.beforeApply, { environment }, { cwd: rootDir });
+		await runHook(
+			entity.hooks?.beforeApply,
+			{ environment, rootDir, cwd: rootDir },
+			{ cwd: rootDir },
+		);
 
 		const result: ProvisionResult<
 			Record<string, string>,
@@ -200,7 +204,14 @@ export async function apply(
 
 		await runHook(
 			entity.hooks?.afterApply,
-			{ environment, action: result.action, state: stateVal, env: envVal },
+			{
+				environment,
+				rootDir,
+				cwd: rootDir,
+				action: result.action,
+				state: stateVal,
+				env: envVal,
+			},
 			{ cwd: rootDir, env: stringify(envVal) },
 		);
 	}
@@ -295,7 +306,7 @@ export async function checkout(
 		};
 		await runHook(
 			entity.hooks?.beforeCheckout,
-			{ environment },
+			{ environment, rootDir, cwd: rootDir },
 			{ cwd: rootDir },
 		);
 		const remote = await entity.read(ctx);
@@ -335,7 +346,7 @@ export async function checkout(
 		if (!envVal) continue;
 		await runHook(
 			entity.hooks?.afterCheckout,
-			{ environment, env: envVal },
+			{ environment, rootDir, cwd: rootDir, env: envVal },
 			{ cwd: rootDir, env: envVal },
 		);
 	}
@@ -375,7 +386,7 @@ export async function destroy(
 		};
 		await runHook(
 			entity.hooks?.beforeDestroy,
-			{ environment },
+			{ environment, rootDir, cwd: rootDir },
 			{ cwd: rootDir },
 		);
 		await entity.deprovision(ctx);
@@ -385,7 +396,7 @@ export async function destroy(
 		writeState(rootDir, environment, state);
 		await runHook(
 			entity.hooks?.afterDestroy,
-			{ environment },
+			{ environment, rootDir, cwd: rootDir },
 			{ cwd: rootDir },
 		);
 		changes.push({

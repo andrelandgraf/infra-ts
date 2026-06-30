@@ -7,6 +7,15 @@ changes both land in minor releases).
 
 ## [Unreleased]
 
+### Added
+
+- **Self-healing CLI auth.** The REST client gained an `onUnauthorized` hook and a reusable
+  `refreshOnUnauthorized({ exec, refresh, reread, current })` util: when a request uses a provider
+  CLI's cached OAuth token and gets a `401`, infra-ts refreshes it (Neon runs `neonctl me`),
+  re-reads the cache, and retries once. Explicit env-var keys fail fast.
+- **Hook path anchor.** Every hook context now includes `rootDir`/`cwd`, so function hooks can
+  resolve relative paths against the config root (shell hooks already run there).
+
 ## [0.2.0] - 2026-06-30
 
 ### Added

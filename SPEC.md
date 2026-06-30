@@ -474,6 +474,12 @@ Do not validate inputs against output schemas.
 4. **Fallback auto-resolution:** if a required credential is absent, the entity may resolve it
    itself (e.g. Neon → `neonctl` OAuth cache; Vercel → `vercel` CLI token). This keeps zero-config
    working — you don't have to wire `credentials` for the common local case.
+5. **Refresh-on-401 (CLI cache only):** the neonctl cache holds a short-lived OAuth access token
+   that the CLI refreshes on use. When infra-ts is using that cached token and a request returns
+   `401`, the REST client runs the CLI's refresh command (`neonctl me`) via `ctx.exec`, re-reads the
+   cache, and retries once — so a stale session self-heals. Explicit env-var keys (or a missing
+   `exec`) skip this and fail fast. Reusable via `refreshOnUnauthorized` + the client's
+   `onUnauthorized` hook.
 
 ```ts
 class Postgres extends Entity<{ NEON_API_KEY: string }, …> {
@@ -777,26 +783,35 @@ is a function or a shell command (string / string[]); shell hooks run non-intera
 stdin detached) with the resolved env injected.
 
 ```ts
+// Every hook context carries the environment + a path anchor.
+interface HookContext {
+	environment: string;
+	rootDir: string; // the directory containing the resolved infra.ts
+	cwd: string; // alias of rootDir
+}
+
 interface EntityHooks<Env, State> {
 	/** Before this entity is provisioned during `infra apply`. */
-	beforeApply?: Hook<{ environment: string }>;
+	beforeApply?: Hook<HookContext>;
 	/** After provision + env resolution. Gets the full provision result (typed env). */
-	afterApply?: Hook<{
-		environment: string;
-		action: ChangeAction;
-		state: State;
-		env: Env;
-	}>;
+	afterApply?: Hook<
+		HookContext & { action: ChangeAction; state: State; env: Env }
+	>;
 	/** Around `infra checkout` (pulling typed env from the live remote). */
-	beforeCheckout?: Hook<{ environment: string }>;
-	afterCheckout?: Hook<{ environment: string; env: Env }>;
+	beforeCheckout?: Hook<HookContext>;
+	afterCheckout?: Hook<HookContext & { env: Env }>;
 	/** Around `infra destroy` (deprovision). */
-	beforeDestroy?: Hook<{ environment: string }>;
-	afterDestroy?: Hook<{ environment: string }>;
+	beforeDestroy?: Hook<HookContext>;
+	afterDestroy?: Hook<HookContext>;
 }
 
 type Hook<Ctx> = ((ctx: Ctx) => void | Promise<void>) | string | string[];
 ```
+
+> **Anchor relative paths to `ctx.rootDir`.** Shell hooks run with `cwd: rootDir`; **function hooks
+> run in-process** with the ambient `process.cwd()`, so resolve paths against `ctx.rootDir` (e.g.
+> `join(ctx.rootDir, "drizzle")`) rather than relying on the working directory. (Function hooks read
+> the typed `ctx.env`; only shell hooks get env injected into `process.env`.)
 
 The keys are **flat and named after the CLI verbs** (`infra apply` ⇒ `beforeApply`/`afterApply`),
 so there's no command-to-event mapping to learn. (There is intentionally no `.on()` registration —

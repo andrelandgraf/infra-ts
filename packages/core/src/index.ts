@@ -26,6 +26,7 @@ export {
 	type EntityCommon,
 	type EntityEnv,
 	type EntityHooks,
+	type HookContext,
 	type Exec,
 	type ExecOptions,
 	type ExecResult,
@@ -74,6 +75,8 @@ export { mergeEnv, type EnvInput } from "./lib/env-merge.js";
 
 export {
 	createRestClient,
+	refreshOnUnauthorized,
+	type FetchLike,
 	type RequestOptions,
 	type RestAuth,
 	type RestClient,

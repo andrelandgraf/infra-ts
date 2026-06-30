@@ -56,6 +56,8 @@ const project = new NeonProject({
 
 Two accounts of the same provider just get two names (`new NeonAccount({ name: "work" })`). The common case is one login with many orgs (shared token, scope differs per account).
 
+When a provider's cached CLI token is a short-lived OAuth token (e.g. Neon's), infra-ts self-heals: on a `401` it refreshes the token via the CLI and retries once, so an idle session doesn't fail your command.
+
 ## Identity state
 
 infra-ts does not store resource attributes. It stores only the binding needed to remember which remote resource belongs to which entity.

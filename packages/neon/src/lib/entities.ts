@@ -9,10 +9,12 @@ import {
 	type EntityCommon,
 	ErrorCode,
 	InfraError,
+	type Exec,
 	type ProvisionContext,
 	type ProvisionResult,
 	type ReadContext,
 	type Ref,
+	refreshOnUnauthorized,
 	type StandardSchemaV1,
 } from "@infra-ts/core";
 import { z } from "zod";
@@ -21,7 +23,11 @@ import {
 	type NeonBranchSnapshot,
 	type NeonEndpointSnapshot,
 } from "./api.js";
-import { DEFAULT_NEON_API_HOST, neonTokenFromBag } from "./credentials.js";
+import {
+	DEFAULT_NEON_API_HOST,
+	neonTokenFromBag,
+	readNeonctlToken,
+} from "./credentials.js";
 import { parseDurationSeconds } from "./duration.js";
 
 const SUSPEND_NEVER = 0;
@@ -48,10 +54,19 @@ abstract class NeonEntity<
 	): unknown {
 		return { NEON_API_KEY: neonTokenFromBag(bag) ?? "" };
 	}
-	protected api(ctx: { credentials: NeonCreds }): NeonApi {
+	protected api(ctx: { credentials: NeonCreds; exec?: Exec }): NeonApi {
+		const token = ctx.credentials.NEON_API_KEY;
+		// When the token came from the neonctl OAuth cache, refresh it via `neonctl me` on a 401.
+		const onUnauthorized = refreshOnUnauthorized({
+			exec: ctx.exec,
+			refresh: ["neonctl", "me"],
+			reread: readNeonctlToken,
+			current: token,
+		});
 		return new NeonApi({
-			token: ctx.credentials.NEON_API_KEY,
+			token,
 			apiHost: process.env.NEON_API_HOST ?? DEFAULT_NEON_API_HOST,
+			...(onUnauthorized ? { onUnauthorized } : {}),
 		});
 	}
 	/** Find the default branch of a project, or throw if none. */
