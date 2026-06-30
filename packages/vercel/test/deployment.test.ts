@@ -78,6 +78,7 @@ describe("VercelDeployment (cli mode)", () => {
 			const dep = new VercelDeployment({
 				name: "web-deploy",
 				project: "prj_1",
+				team: "team_abc",
 				cwd: dir,
 				prebuilt: true,
 			});
@@ -98,11 +99,17 @@ describe("VercelDeployment (cli mode)", () => {
 	});
 
 	test("requiredTools advertises the vercel CLI in cli mode only", () => {
-		const cli = new VercelDeployment({ name: "d", project: "p", cwd: "." });
+		const cli = new VercelDeployment({
+			name: "d",
+			project: "p",
+			team: "team_abc",
+			cwd: ".",
+		});
 		expect(cli.requiredTools().map((t) => t.id)).toEqual(["vercel"]);
 		const rest = new VercelDeployment({
 			name: "d",
 			project: "p",
+			team: "team_abc",
 			cwd: ".",
 			mode: "rest",
 		});

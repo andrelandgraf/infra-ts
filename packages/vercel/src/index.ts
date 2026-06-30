@@ -15,6 +15,7 @@ export {
 	VercelEdgeConfig,
 	VercelLogDrain,
 	VercelProject,
+	VercelTeam,
 	VercelWebhook,
 	type VercelAccessGroupOptions,
 	type VercelAccountOptions,
@@ -23,6 +24,7 @@ export {
 	type VercelEdgeConfigOptions,
 	type VercelLogDrainOptions,
 	type VercelProjectOptions,
+	type VercelTeamOptions,
 	type VercelWebhookOptions,
 } from "./lib/entities.js";
 export { collectFiles, contentHash, type DeployFile } from "./lib/deploy.js";

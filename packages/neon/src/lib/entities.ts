@@ -99,8 +99,8 @@ export interface NeonProjectOptions extends EntityCommon<
 	Record<string, never>,
 	NeonProjectState
 > {
-	/** Neon org id (`org-…`) or an account ref (`account.id`). Omit for your personal account. */
-	org?: string | Ref<string>;
+	/** Neon org id (`org-…`) or an org ref (`org.id`). */
+	org: string | Ref<string>;
 	region?: string;
 	pgVersion?: number;
 	compute?: NeonComputeConfig;
@@ -129,6 +129,16 @@ export class NeonProject extends NeonEntity<
 	NeonProjectState,
 	NeonProjectRemote
 > {
+	constructor(options: NeonProjectOptions) {
+		super(options);
+		if (missingScope(options.org)) {
+			throw new InfraError(
+				ErrorCode.InvalidEntity,
+				`neon: project "${options.name}" requires an org. Pass \`org\` explicitly, usually from \`new NeonOrg(...).id\`.`,
+			);
+		}
+	}
+
 	readonly envSchema = z.object({}) as unknown as StandardSchemaV1<
 		unknown,
 		Record<string, never>
@@ -873,11 +883,11 @@ export class NeonDataApi extends NeonEntity<
 	async deprovision(): Promise<void> {}
 }
 
-// ─── Account (org scope + auth anchor) ────────────────────────────────────────
+// ─── Org (scope + auth anchor) ────────────────────────────────────────────────
 
-export type NeonAccountOptions = AccountOptions;
+export type NeonOrgOptions = AccountOptions;
 
-export class NeonAccount extends Account<NeonCreds> {
+export class NeonOrg extends Account<NeonCreds> {
 	readonly credentialsSchema = credentialsSchema;
 	override resolveCredentials(
 		bag: Record<string, string | undefined>,
@@ -900,4 +910,13 @@ export class NeonAccount extends Account<NeonCreds> {
 		const orgs = await api.listOrganizations();
 		return orgs.map((o) => ({ id: o.id, name: o.name }));
 	}
+}
+
+/** @deprecated Use `NeonOrg`. */
+export type NeonAccountOptions = NeonOrgOptions;
+/** @deprecated Use `NeonOrg`. */
+export const NeonAccount = NeonOrg;
+
+function missingScope(value: unknown): boolean {
+	return value === undefined || value === null || value === "";
 }

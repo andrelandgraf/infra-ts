@@ -11,18 +11,27 @@ provider can implement. You declare your infrastructure as **typed entities** in
 ```ts
 // infra.ts
 import { defineInfra } from "infra-ts";
-import { NeonProject, NeonPostgres } from "infra-ts/neon";
-import { VercelProject } from "infra-ts/vercel";
+import { NeonOrg, NeonProject, NeonPostgres } from "infra-ts/neon";
+import { VercelProject, VercelTeam } from "infra-ts/vercel";
 
-const project = new NeonProject({ name: "my-app", region: "aws-us-east-1" });
+const neon = new NeonOrg({ name: "neon" });
+const vercel = new VercelTeam({ name: "vercel" });
+const project = new NeonProject({
+	name: "my-app-neon",
+	org: neon.id,
+	region: "aws-us-east-1",
+});
 const db = new NeonPostgres({ name: "my-db", projectId: project.id });
 
 export default defineInfra({
 	entities: [
+		neon,
+		vercel,
 		project,
 		db,
 		new VercelProject({
-			name: "my-app",
+			name: "my-app-vercel",
+			team: vercel.id,
 			framework: "nextjs",
 			// Typed cross-entity wiring: Neon's connection string → a Vercel env var.
 			env: { DATABASE_URL: db.env.databaseUrl },
@@ -131,9 +140,15 @@ Hand one entity's ref to another and infra-ts (a) records an edge in the depende
 resolves it to the real value at apply time — fully typed, order-independent:
 
 ```ts
-const project = new NeonProject({ name: "app" });
+const neon = new NeonOrg({ name: "neon" });
+const vercel = new VercelTeam({ name: "vercel" });
+const project = new NeonProject({ name: "app-neon", org: neon.id });
 const db = new NeonPostgres({ name: "db", projectId: project.id }); // depends on project
-new VercelProject({ name: "app", env: { DATABASE_URL: db.env.databaseUrl } }); // depends on db
+new VercelProject({
+	name: "app-vercel",
+	team: vercel.id,
+	env: { DATABASE_URL: db.env.databaseUrl },
+}); // depends on db and team
 ```
 
 To pull a consumer **all** of another entity's env at once, spread `entity.toEnv()` — an OS-keyed
@@ -142,6 +157,7 @@ bundle of refs. The refs carry the edge, so this is wiring _and_ dependency in o
 ```ts
 new VercelProject({
 	name: "app",
+	team: vercel.id,
 	env: {
 		...db.toEnv(), // → { DATABASE_URL, DATABASE_URL_UNPOOLED }
 		...auth.toEnv(), // → { NEON_AUTH_BASE_URL, NEON_AUTH_JWKS_URL }
@@ -186,30 +202,31 @@ A small, git-ignored JSON file written at your project root, one per environment
 It's just **bindings** — the ids that tie each entity to a concrete remote resource. Delete it and
 `infra apply` creates fresh resources; commit nothing here.
 
-### Accounts — auth + org/team scope
+### Orgs/teams — auth + provider scope
 
 Provisioning needs two per-developer things that don't belong hardcoded in `infra.ts`: a **token**
-and the **org/team to provision into**. Both are modeled by an **`Account`** node — a named entity
-that creates no remote resource. Its scope (org/team id) is bound by `infra link` and stored in
+and the **org/team to provision into**. Both are modeled by a named scope entity
+(`NeonOrg`, `VercelTeam`) that creates no remote resource. Its scope (org/team id) is bound by
+`infra link` and stored in
 `.infra.<env>`; auth comes from `infra login`.
 
 ```ts
-import { NeonAccount, NeonProject } from "infra-ts/neon";
+import { NeonOrg, NeonProject } from "infra-ts/neon";
 
-const personal = new NeonAccount({ name: "personal" });
-const project = new NeonProject({ name: "app", org: personal.id }); // org from the account
+const neon = new NeonOrg({ name: "neon" });
+const project = new NeonProject({ name: "app", org: neon.id }); // org from the scope entity
 ```
 
 ```bash
 infra login    # authenticate (neonctl/vercel OAuth passthrough)
-infra link     # pick an org/team per account → written to .infra.<env>
+infra link     # pick an org/team per scope → written to .infra.<env>
 infra apply    # provision into that scope
 ```
 
-Accounts are named, so two of the same provider just get two names (`new NeonAccount({ name: "work" })`).
-Entities reference a specific account via `org: <account>.id` / `team: <account>.id`. The common
+Scopes are named, so two of the same provider just get two names (`new NeonOrg({ name: "work" })`).
+Entities reference a specific scope via `org: <scope>.id` / `team: <scope>.id`. The common
 case is one login with many orgs (the token is shared, only the scope differs); two separate logins
-need a per-account token (`new NeonAccount({ name: "work", apiKey: process.env.WORK_NEON_API_KEY })`).
+should use separate shell/env credentials for now.
 
 ### Typed env mapping
 
@@ -411,7 +428,7 @@ Credentials: `NEON_API_KEY` or the `neonctl` OAuth cache.
 
 | Entity            | Manages                                                                                      | Env outputs (→ OS var)                                                                       |
 | ----------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `NeonAccount`     | org scope + auth anchor (`infra login`/`link`)                                            | _none_ (`.id` = org id)                                                                      |
+| `NeonOrg`         | org scope + auth anchor (`infra login`/`link`)                                               | _none_ (`.id` = org id)                                                                      |
 | `NeonProject`     | the project, default-branch compute (autoscale/scale-to-zero) + TTL, **logical replication** | _none_ (exposes `.id` for wiring)                                                            |
 | `NeonPostgres`    | a database/role on the project's branch                                                      | `databaseUrl`, `databaseUrlUnpooled` → `DATABASE_URL`, `DATABASE_URL_UNPOOLED`               |
 | `NeonReadReplica` | a `read_only` compute endpoint (read replica) on a branch                                    | `readReplicaUrl`, `readReplicaUrlUnpooled` → `READ_REPLICA_URL`, `READ_REPLICA_URL_UNPOOLED` |
@@ -420,6 +437,7 @@ Credentials: `NEON_API_KEY` or the `neonctl` OAuth cache.
 
 ```ts
 import {
+	NeonOrg,
 	NeonProject,
 	NeonPostgres,
 	NeonReadReplica,
@@ -427,8 +445,9 @@ import {
 	NeonDataApi,
 } from "infra-ts/neon";
 
+const neon = new NeonOrg({ name: "neon" });
 const project = new NeonProject({
-	org: "org-…", // omit → personal account
+	org: neon.id,
 	name: "app",
 	region: "aws-us-east-1",
 	pgVersion: 17,
@@ -453,11 +472,11 @@ const dataApi = new NeonDataApi({ name: "app-data", projectId: project.id });
 
 ### `infra-ts/vercel` — Vercel
 
-Credentials: `VERCEL_TOKEN` or the `vercel` CLI cache. Pass `team` (id or slug) for team scope.
+Credentials: `VERCEL_TOKEN` or the `vercel` CLI cache. Pass `team` (id/ref or slug) for team scope.
 
 | Entity              | Manages                                                                                                                                        | Env outputs (→ OS var)                                                  |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `VercelAccount`     | team scope + auth anchor (`infra login`/`link`)                                                                                             | _none_ (`.id` = team id)                                                |
+| `VercelTeam`        | team scope + auth anchor (`infra login`/`link`)                                                                                                | _none_ (`.id` = team id)                                                |
 | `VercelProject`     | the project, full **settings** (build/dev/install, node version, region, …) as drift, **env vars** (additive + update), and **custom domains** | `projectId`, `projectName` → `VERCEL_PROJECT_ID`, `VERCEL_PROJECT_NAME` |
 | `VercelEdgeConfig`  | an Edge Config store + its items (idempotent upsert)                                                                                           | `edgeConfigId` → `EDGE_CONFIG_ID`                                       |
 | `VercelWebhook`     | a project/account webhook                                                                                                                      | `webhookId` → `WEBHOOK_ID`                                              |
@@ -468,13 +487,15 @@ Credentials: `VERCEL_TOKEN` or the `vercel` CLI cache. Pass `team` (id or slug) 
 
 ```ts
 import {
+	VercelTeam,
 	VercelProject,
 	VercelEdgeConfig,
 	VercelWebhook,
 } from "infra-ts/vercel";
 
+const team = new VercelTeam({ name: "vercel" });
 new VercelProject({
-	team: "team_…",
+	team: team.id,
 	name: "app",
 	framework: "nextjs",
 	settings: {
@@ -488,6 +509,7 @@ new VercelProject({
 });
 new VercelEdgeConfig({
 	name: "app-flags",
+	team: team.id,
 	slug: "app-flags",
 	items: { newUi: true },
 });
@@ -499,11 +521,17 @@ documents for CI) so it matches their default behavior exactly; a `mode: "rest"`
 the API instead. It's content-hash idempotent — unchanged source is a no-op.
 
 ```ts
-import { VercelProject, VercelDeployment } from "infra-ts/vercel";
+import { VercelDeployment, VercelProject, VercelTeam } from "infra-ts/vercel";
 
-const web = new VercelProject({ name: "app", framework: "nextjs" });
+const team = new VercelTeam({ name: "vercel" });
+const web = new VercelProject({
+	name: "app",
+	team: team.id,
+	framework: "nextjs",
+});
 new VercelDeployment({
 	name: "app-deploy",
+	team: team.id,
 	project: web.id, // → VERCEL_PROJECT_ID (injected as env, never on the command line)
 	cwd: "./apps/web",
 	production: true, // else the target derives from the active environment
@@ -848,25 +876,25 @@ fail fast.
 
 ## Packages
 
-| Package                                       | Description                                                                                                                                                           |
-| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`infra-ts`](packages/cli)                    | Umbrella: the `infra-ts` CLI + SDK + bundled providers (`infra-ts/neon`, `/vercel`, `/upstash`, `/resend`, `/mux`).                                                   |
-| [`@infra-ts/core`](packages/core)             | The open standard: `Entity` contract, `defineInfra`, refs/DAG, env mapping, REST client, `parseEnv`, errors.                                                          |
-| [`@infra-ts/runtime`](packages/runtime)       | The engine: config loading (jiti), `.infra.<env>` I/O, `plan`/`apply`/`status`/`checkout`/`destroy`, hooks, dotenv.                                                   |
-| [`@infra-ts/neon`](packages/neon)             | Neon entities: `NeonAccount`, `NeonProject` (incl. logical replication), `NeonPostgres`, `NeonReadReplica`, `NeonAuth`, `NeonDataApi`.                                |
-| [`@infra-ts/vercel`](packages/vercel)         | Vercel entities: `VercelAccount`, `VercelProject`, `VercelDeployment`, `VercelEdgeConfig`, `VercelWebhook`, `VercelDnsRecord`, `VercelLogDrain`, `VercelAccessGroup`. |
-| [`@infra-ts/upstash`](packages/upstash)       | Upstash entities: `UpstashRedis`, `UpstashVector`, `UpstashQStashQueue`, `UpstashQStashSchedule`, `UpstashQStashTopic`.                                               |
-| [`@infra-ts/resend`](packages/resend)         | Resend entities: `ResendDomain`, `ResendApiKey`, `ResendAudience`, `ResendWebhook`.                                                                                   |
-| [`@infra-ts/mux`](packages/mux)               | Mux entities: `MuxSigningKey`, `MuxLiveStream`, `MuxPlaybackRestriction`, `MuxLiveStreamSimulcastTarget`.                                                             |
-| [`@infra-ts/sentry`](packages/sentry)         | Sentry entities: `SentryTeam`, `SentryProject`, `SentryClientKey`.                                                                                                    |
-| [`@infra-ts/workos`](packages/workos)         | WorkOS entities: `WorkosOrganization`.                                                                                                                                |
-| [`@infra-ts/sanity`](packages/sanity)         | Sanity entities: `SanityDataset`, `SanityToken`, `SanityCorsOrigin`.                                                                                                  |
-| [`@infra-ts/statsig`](packages/statsig)       | Statsig entities: `StatsigGate`, `StatsigDynamicConfig`, `StatsigExperiment`.                                                                                         |
-| [`@infra-ts/dub`](packages/dub)               | Dub entities: `DubDomain`, `DubTag`, `DubLink`.                                                                                                                       |
-| [`@infra-ts/stripe`](packages/stripe)         | Stripe entities: `StripeWebhookEndpoint`, `StripeProduct`, `StripePrice`.                                                                                             |
-| [`@infra-ts/posthog`](packages/posthog)       | PostHog entities: `PosthogProject`, `PosthogFeatureFlag`.                                                                                                             |
-| [`@infra-ts/elevenlabs`](packages/elevenlabs) | ElevenLabs entities: `ElevenLabsAgent`.                                                                                                                               |
-| [`@infra-ts/openai`](packages/openai)         | OpenAI entities: `OpenAiProject`, `OpenAiServiceAccount`.                                                                                                             |
+| Package                                       | Description                                                                                                                                                        |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`infra-ts`](packages/cli)                    | Umbrella: the `infra-ts` CLI + SDK + bundled providers (`infra-ts/neon`, `/vercel`, `/upstash`, `/resend`, `/mux`).                                                |
+| [`@infra-ts/core`](packages/core)             | The open standard: `Entity` contract, `defineInfra`, refs/DAG, env mapping, REST client, `parseEnv`, errors.                                                       |
+| [`@infra-ts/runtime`](packages/runtime)       | The engine: config loading (jiti), `.infra.<env>` I/O, `plan`/`apply`/`status`/`checkout`/`destroy`, hooks, dotenv.                                                |
+| [`@infra-ts/neon`](packages/neon)             | Neon entities: `NeonOrg`, `NeonProject` (incl. logical replication), `NeonPostgres`, `NeonReadReplica`, `NeonAuth`, `NeonDataApi`.                                 |
+| [`@infra-ts/vercel`](packages/vercel)         | Vercel entities: `VercelTeam`, `VercelProject`, `VercelDeployment`, `VercelEdgeConfig`, `VercelWebhook`, `VercelDnsRecord`, `VercelLogDrain`, `VercelAccessGroup`. |
+| [`@infra-ts/upstash`](packages/upstash)       | Upstash entities: `UpstashRedis`, `UpstashVector`, `UpstashQStashQueue`, `UpstashQStashSchedule`, `UpstashQStashTopic`.                                            |
+| [`@infra-ts/resend`](packages/resend)         | Resend entities: `ResendDomain`, `ResendApiKey`, `ResendAudience`, `ResendWebhook`.                                                                                |
+| [`@infra-ts/mux`](packages/mux)               | Mux entities: `MuxSigningKey`, `MuxLiveStream`, `MuxPlaybackRestriction`, `MuxLiveStreamSimulcastTarget`.                                                          |
+| [`@infra-ts/sentry`](packages/sentry)         | Sentry entities: `SentryTeam`, `SentryProject`, `SentryClientKey`.                                                                                                 |
+| [`@infra-ts/workos`](packages/workos)         | WorkOS entities: `WorkosOrganization`.                                                                                                                             |
+| [`@infra-ts/sanity`](packages/sanity)         | Sanity entities: `SanityDataset`, `SanityToken`, `SanityCorsOrigin`.                                                                                               |
+| [`@infra-ts/statsig`](packages/statsig)       | Statsig entities: `StatsigGate`, `StatsigDynamicConfig`, `StatsigExperiment`.                                                                                      |
+| [`@infra-ts/dub`](packages/dub)               | Dub entities: `DubDomain`, `DubTag`, `DubLink`.                                                                                                                    |
+| [`@infra-ts/stripe`](packages/stripe)         | Stripe entities: `StripeWebhookEndpoint`, `StripeProduct`, `StripePrice`.                                                                                          |
+| [`@infra-ts/posthog`](packages/posthog)       | PostHog entities: `PosthogProject`, `PosthogFeatureFlag`.                                                                                                          |
+| [`@infra-ts/elevenlabs`](packages/elevenlabs) | ElevenLabs entities: `ElevenLabsAgent`.                                                                                                                            |
+| [`@infra-ts/openai`](packages/openai)         | OpenAI entities: `OpenAiProject`, `OpenAiServiceAccount`.                                                                                                          |
 
 Architecture: **functional core, imperative shell.** `@infra-ts/core` is pure (types + validation +
 pure helpers, no filesystem or child processes). `@infra-ts/runtime` is the imperative shell (I/O,

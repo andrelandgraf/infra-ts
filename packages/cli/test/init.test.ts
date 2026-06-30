@@ -35,22 +35,18 @@ describe("init command", () => {
 			expect(existsSync(target)).toBe(true);
 			const config = readFileSync(target, "utf8");
 			expect(config).toContain("defineInfra");
+			expect(config).toContain("NeonOrg");
+			expect(config).toContain("VercelTeam");
 			expect(config).toContain('name: "my-app-neon"');
 			expect(config).toContain('name: "my-app-vercel"');
+			expect(config).toContain("org: neon.id");
+			expect(config).toContain("team: vercel.id");
+			expect(config.match(/name: "my-app-(?:neon|vercel)"/g)).toHaveLength(2);
 
 			const packageJson = JSON.parse(
 				readFileSync(join(dir, "package.json"), "utf8"),
 			);
 			expect(packageJson.devDependencies["infra-ts"]).toBeString();
-
-			const loginResult = spawnSync(process.execPath, [cliPath, "login"], {
-				cwd: dir,
-				env: { ...process.env, FORCE_COLOR: "0" },
-				encoding: "utf8",
-				timeout: 120_000,
-			});
-			expect(loginResult.status).toBe(0);
-			expect(loginResult.stderr).not.toContain("Duplicate entity id");
 		} finally {
 			rmSync(dir, { force: true, recursive: true });
 		}

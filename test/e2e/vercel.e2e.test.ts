@@ -14,18 +14,18 @@ import { VercelEdgeConfig, VercelProject } from "@infra-ts/vercel";
 const RUN = process.env.INFRA_E2E === "1";
 const suffix = `${Date.now().toString(36)}`;
 const dir = mkdtempSync(join(tmpdir(), "infra-ts-e2e-vercel-"));
-const team = process.env.VERCEL_TEAM;
+const team = process.env.VERCEL_TEAM ?? "team_e2e_required";
 
 const project = new VercelProject({
 	name: `infra-ts-e2e-${suffix}`,
-	...(team ? { team } : {}),
+	team,
 	framework: "nextjs",
 	settings: { buildCommand: "next build", nodeVersion: "20.x" },
 	env: { FOO: "bar" },
 });
 const edge = new VercelEdgeConfig({
 	name: `edge-${suffix}`,
-	...(team ? { team } : {}),
+	team,
 	slug: `infra-ts-e2e-${suffix}`,
 	items: { greeting: "hello" },
 });

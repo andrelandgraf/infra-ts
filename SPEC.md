@@ -497,49 +497,49 @@ class Postgres extends Entity<{ NEON_API_KEY: string }, …> {
 - **Credentials are never written to `.infra` state** (§10) or echoed in logs.
 - Credentials are **environment-scoped** — prod and preview can use different keys/orgs.
 
-### 8.3 Accounts — provider scope + linking
+### 8.3 Orgs/teams — provider scope + linking
 
 Before infra-ts can provision anything it needs to know **which account/org/team to provision
 into** — base identity that exists _before_ the first `apply` and is **per-developer**, so it must
-not be hardcoded in `infra.ts`. This is modeled as an **Account node**: a first-class entity that
-owns a provider's auth anchor and scope.
+not be hardcoded in `infra.ts`. This is modeled as a provider-native scope entity, such as
+`NeonOrg` or `VercelTeam`: a first-class entity that owns a provider's auth anchor and scope.
 
 ```ts
-import { NeonAccount, NeonProject, NeonPostgres } from "@infra-ts/neon";
+import { NeonOrg, NeonProject, NeonPostgres } from "@infra-ts/neon";
 
-const personal = new NeonAccount({ name: "personal" });
-const work = new NeonAccount({ name: "work" });
+const personal = new NeonOrg({ name: "personal" });
+const work = new NeonOrg({ name: "work" });
 
-const project = new NeonProject({ name: "app", org: personal.id }); // org from the account
+const project = new NeonProject({ name: "app", org: personal.id }); // org from the scope
 const db = new NeonPostgres({ name: "app-db", projectId: project.id });
 const tools = new NeonProject({ name: "tools", org: work.id });
 
 export default defineInfra({ entities: [personal, work, project, db, tools] });
 ```
 
-An Account:
+A scope entity:
 
-- **Is a named entity** (`new NeonAccount({ name })`) — the `name` is its identifier and the key
+- **Is a named entity** (`new NeonOrg({ name })`) — the `name` is its identifier and the key
   under which its scope lives in `.infra.<env>` (`entities.personal = { scopeId: "org-…" }`).
-  Two accounts ⇒ two names; duplicate names are the usual hard error.
-- **Exposes `account.id`** = the bound scope id (e.g. a Neon `org-…` / Vercel `team_…`). Entities
+  Two scopes ⇒ two names; duplicate names are the usual hard error.
+- **Exposes `scope.id`** = the bound scope id (e.g. a Neon `org-…` / Vercel `team_…`). Entities
   wire it where they'd otherwise hardcode an org/team: `org: personal.id`. That ref creates the
-  edge, so the account resolves first.
+  edge, so the scope resolves first.
 - **Is bound by `infra-ts link`, not `apply`.** `link` lists your orgs/teams (via the authed CLI /
   REST), you pick one, and the id is written to `.infra.<env>` under the account name. `apply`
-  reads it; the account's `provision` **creates no remote resource** — it just verifies a scope is
+  reads it; the scope's `provision` **creates no remote resource** — it just verifies a scope is
   bound (else errors _“run `infra-ts link <name>`”_) and never deletes the org on `destroy`.
 - **Anchors auth.** `infra-ts login` authenticates the account's provider (CLI OAuth passthrough
   for Neon/Vercel; see §8.1 fallback). Credentials resolve per account: explicit option → creds
   store keyed by account name → provider env var → CLI cache.
 
-**Multi-account credentials.** The common case is _one login, many orgs_ — entities share the
-cached token and differ only by `account.id`, which works out of the box. Two genuinely separate
-logins need per-account tokens (`new NeonAccount({ name: "work", apiKey: process.env.WORK_NEON_API_KEY })`),
-since a provider CLI holds a single cached session.
+**Multi-scope credentials.** The common case is _one login, many orgs_ — entities share the cached
+token and differ only by `scope.id`, which works out of the box.
 
-**Auto-bind.** When exactly one account of a provider is present, entities may omit the scope ref;
-with two or more, it becomes required (else a clear error names the candidates).
+**Scope is required.** Provider resources do not infer a personal/default provider scope. A
+`NeonProject` must declare `org`, and Vercel resources must declare `team`, either as a literal id
+or a scope ref. This keeps every apply reproducible and prevents accidental provisioning into
+provider CLI defaults.
 
 ---
 

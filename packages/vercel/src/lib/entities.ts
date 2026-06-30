@@ -42,11 +42,21 @@ const credentialsSchema = z.object({
 
 /** Shared base: Vercel credentials (VERCEL_TOKEN, with vercel-CLI fallback) + an API client. */
 abstract class VercelEntity<
-	O extends EntityCommon<Env, State> & { team?: string | Ref<string> },
+	O extends EntityCommon<Env, State> & { team: string | Ref<string> },
 	Env extends Record<string, string>,
 	State extends Record<string, unknown>,
 	Remote,
 > extends Entity<O, VercelCreds, Env, State, Remote> {
+	constructor(options: O) {
+		super(options);
+		if (missingScope(options.team)) {
+			throw new InfraError(
+				ErrorCode.InvalidEntity,
+				`vercel: "${options.name}" requires a team. Pass \`team\` explicitly, usually from \`new VercelTeam(...).id\`.`,
+			);
+		}
+	}
+
 	readonly credentialsSchema = credentialsSchema;
 	override resolveCredentials(
 		bag: Record<string, string | undefined>,
@@ -81,7 +91,7 @@ export interface VercelProjectOptions extends EntityCommon<
 	VercelProjectEnv,
 	{ id: string }
 > {
-	team?: string | Ref<string>;
+	team: string | Ref<string>;
 	framework?: string | null;
 	settings?: VercelProjectSettings;
 	env?: VercelEnvInput;
@@ -283,7 +293,7 @@ export interface VercelEdgeConfigOptions extends EntityCommon<
 	EdgeConfigEnv,
 	{ id: string }
 > {
-	team?: string | Ref<string>;
+	team: string | Ref<string>;
 	slug: string;
 	items?: Record<string, unknown>;
 }
@@ -375,7 +385,7 @@ export interface VercelWebhookOptions extends EntityCommon<
 	WebhookEnv,
 	{ id: string }
 > {
-	team?: string | Ref<string>;
+	team: string | Ref<string>;
 	url: string | Ref<string>;
 	events: string[];
 	projectIds?: (string | Ref<string>)[];
@@ -473,7 +483,7 @@ export interface VercelDnsRecordOptions extends EntityCommon<
 	Record<string, never>,
 	{ id: string }
 > {
-	team?: string | Ref<string>;
+	team: string | Ref<string>;
 	/** The domain the record belongs to (must already be on the account). */
 	domain: string | Ref<string>;
 	type: "A" | "AAAA" | "CNAME" | "TXT" | "MX" | "NS" | "SRV" | "CAA" | "ALIAS";
@@ -579,7 +589,7 @@ export interface VercelLogDrainOptions extends EntityCommon<
 	Record<string, never>,
 	{ id: string }
 > {
-	team?: string | Ref<string>;
+	team: string | Ref<string>;
 	url: string | Ref<string>;
 	deliveryFormat?: "json" | "ndjson" | "syslog";
 	sources?: ("static" | "lambda" | "edge" | "external" | "build")[];
@@ -669,7 +679,7 @@ export interface VercelAccessGroupOptions extends EntityCommon<
 	AccessGroupEnv,
 	{ id: string }
 > {
-	team?: string | Ref<string>;
+	team: string | Ref<string>;
 	/** Display name. Defaults to the entity `name`. */
 	groupName?: string;
 }
@@ -764,11 +774,11 @@ export class VercelAccessGroup extends VercelEntity<
 }
 type VercelAccessGroup_Remote = VercelAccessGroupSnapshot;
 
-// ─── Account (team scope + auth anchor) ───────────────────────────────────────
+// ─── Team (scope + auth anchor) ───────────────────────────────────────────────
 
-export type VercelAccountOptions = AccountOptions;
+export type VercelTeamOptions = AccountOptions;
 
-export class VercelAccount extends Account<VercelCreds> {
+export class VercelTeam extends Account<VercelCreds> {
 	readonly credentialsSchema = credentialsSchema;
 	override resolveCredentials(
 		bag: Record<string, string | undefined>,
@@ -790,6 +800,11 @@ export class VercelAccount extends Account<VercelCreds> {
 	}
 }
 
+/** @deprecated Use `VercelTeam`. */
+export type VercelAccountOptions = VercelTeamOptions;
+/** @deprecated Use `VercelTeam`. */
+export const VercelAccount = VercelTeam;
+
 // ─── Deployment (command-backed: vercel CLI by default, REST fallback) ────────
 
 type DeploymentEnv = { deploymentUrl: string };
@@ -798,7 +813,7 @@ export interface VercelDeploymentOptions extends EntityCommon<
 	DeploymentEnv,
 	DeploymentState
 > {
-	team?: string | Ref<string>;
+	team: string | Ref<string>;
 	/** The Vercel project id (or `project.id` ref) this deployment belongs to. */
 	project: string | Ref<string>;
 	/** Source directory to deploy (relative to where you run infra-ts). Default ".". */
@@ -1031,4 +1046,7 @@ function stripProtocol(url: string): string {
 }
 function ensureProtocol(url: string): string {
 	return /^https?:\/\//.test(url) ? url : `https://${url}`;
+}
+function missingScope(value: unknown): boolean {
+	return value === undefined || value === null || value === "";
 }

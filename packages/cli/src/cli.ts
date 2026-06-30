@@ -544,11 +544,14 @@ async function withErrors(fn: () => Promise<void>): Promise<void> {
 }
 
 const INIT_TEMPLATE = `import { defineInfra } from "infra-ts";
-import { NeonProject, NeonPostgres } from "infra-ts/neon";
-import { VercelProject } from "infra-ts/vercel";
+import { NeonOrg, NeonProject, NeonPostgres } from "infra-ts/neon";
+import { VercelProject, VercelTeam } from "infra-ts/vercel";
 
+const neon = new NeonOrg({ name: "neon" });
+const vercel = new VercelTeam({ name: "vercel" });
 const project = new NeonProject({
 \tname: "my-app-neon",
+\torg: neon.id,
 \tregion: "aws-us-east-1",
 \tcompute: { minCu: 0.25, maxCu: 1, suspendTimeout: "5m" },
 });
@@ -556,10 +559,13 @@ const db = new NeonPostgres({ name: "my-db", projectId: project.id });
 
 export default defineInfra({
 \tentities: [
+\t\tneon,
+\t\tvercel,
 \t\tproject,
 \t\tdb,
 \t\tnew VercelProject({
 \t\t\tname: "my-app-vercel",
+\t\t\tteam: vercel.id,
 \t\t\tframework: "nextjs",
 \t\t\tenv: { DATABASE_URL: db.env.databaseUrl },
 \t\t}),

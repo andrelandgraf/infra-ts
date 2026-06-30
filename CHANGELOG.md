@@ -7,6 +7,20 @@ changes both land in minor releases).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-30
+
+### Changed
+
+- Neon and Vercel resources now require an explicit org/team scope. `NeonProject` requires `org`,
+  and Vercel resources require `team`, preventing accidental provisioning into provider defaults.
+- `infra init` now scaffolds explicit `NeonOrg` and `VercelTeam` scope entities and wires projects
+  through their `.id` refs.
+
+### Added
+
+- Added provider-native `NeonOrg` and `VercelTeam` scope names. Existing `NeonAccount` and
+  `VercelAccount` exports remain as compatibility aliases.
+
 ## [0.3.3] - 2026-06-30
 
 ### Added
@@ -94,7 +108,8 @@ deploy --prebuilt` CLI flow (content-hash idempotent, deployment id/URL captured
   state in `.infra.<env>`, `parseEnv`), the `plan`/`apply`/`status`/`checkout`/`destroy` engine, the
   CLI + SDK, and the Neon, Vercel, Upstash, Resend, and Mux providers.
 
-[Unreleased]: https://github.com/andrelandgraf/infra-ts/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/andrelandgraf/infra-ts/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/andrelandgraf/infra-ts/compare/v0.3.3...v0.4.0
 [0.3.3]: https://github.com/andrelandgraf/infra-ts/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/andrelandgraf/infra-ts/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/andrelandgraf/infra-ts/compare/v0.3.0...v0.3.1

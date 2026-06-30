@@ -18,7 +18,7 @@ const dir = mkdtempSync(join(tmpdir(), "infra-ts-e2e-neon-"));
 const project = new NeonProject({
 	name: `infra-ts-e2e-${suffix}`,
 	region: "aws-us-east-1",
-	...(process.env.NEON_ORG_ID ? { org: process.env.NEON_ORG_ID } : {}),
+	org: process.env.NEON_ORG_ID ?? "org_e2e_required",
 	compute: { minCu: 0.25, maxCu: 1, suspendTimeout: "5m" },
 });
 const db = new NeonPostgres({ name: `db-${suffix}`, projectId: project.id });

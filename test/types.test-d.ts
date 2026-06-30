@@ -7,11 +7,12 @@ import { defineInfra, parseEnv, type Ref } from "infra-ts";
 import {
 	NeonAccount,
 	NeonAuth,
+	NeonOrg,
 	NeonPostgres,
 	NeonProject,
 	NeonReadReplica,
 } from "infra-ts/neon";
-import { VercelDeployment, VercelProject } from "infra-ts/vercel";
+import { VercelDeployment, VercelProject, VercelTeam } from "infra-ts/vercel";
 import { UpstashRedis, UpstashVector } from "infra-ts/upstash";
 import { ResendApiKey } from "infra-ts/resend";
 import { MuxSigningKey } from "infra-ts/mux";
@@ -26,6 +27,8 @@ import { ElevenLabsAgent } from "infra-ts/elevenlabs";
 import { OpenAiServiceAccount } from "infra-ts/openai";
 
 const account = new NeonAccount({ name: "personal" });
+const neonOrg = new NeonOrg({ name: "work" });
+const vercelTeam = new VercelTeam({ name: "vercel" });
 const project = new NeonProject({
 	name: "app",
 	region: "aws-us-east-1",
@@ -49,6 +52,7 @@ const jwks: Ref<string> = auth.env.authJwksUrl;
 // Cross-entity wiring is typed (a Ref<string> is accepted as a Vercel env value).
 const web = new VercelProject({
 	name: "app",
+	team: vercelTeam.id,
 	framework: "nextjs",
 	settings: { buildCommand: "next build", nodeVersion: "20.x" },
 	env: {
@@ -58,6 +62,7 @@ const web = new VercelProject({
 });
 const deployment = new VercelDeployment({
 	name: "web-deploy",
+	team: vercelTeam.id,
 	project: web.id,
 	cwd: "./apps/web",
 	production: true,
@@ -119,6 +124,8 @@ new StripePrice({
 const infra = defineInfra({
 	entities: [
 		account,
+		neonOrg,
+		vercelTeam,
 		project,
 		db,
 		auth,
@@ -150,12 +157,20 @@ function checkParseEnv() {
 }
 
 // ── option-type enforcement ──
-// @ts-expect-error — `name` is required.
+// @ts-expect-error — `name` and `org` are required.
 new NeonProject({ region: "aws-us-east-1" });
 // @ts-expect-error — `region` must be a string.
-new NeonProject({ name: "x", region: 123 });
-// @ts-expect-error — Vercel `nodeVersion` is a string, not a number.
-new VercelProject({ name: "x", settings: { nodeVersion: 20 } });
+new NeonProject({ name: "x", org: neonOrg.id, region: 123 });
+// @ts-expect-error — Neon `org` is required.
+new NeonProject({ name: "x" });
+new VercelProject({
+	name: "x",
+	team: vercelTeam.id,
+	// @ts-expect-error — Vercel `nodeVersion` is a string, not a number.
+	settings: { nodeVersion: 20 },
+});
+// @ts-expect-error — Vercel `team` is required.
+new VercelProject({ name: "x" });
 
 export {
 	pid,
