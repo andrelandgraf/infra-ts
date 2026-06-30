@@ -40,7 +40,7 @@
 		"typecheck": "tsc -p tsconfig.json --noEmit"
 	},
 	"dependencies": {
-		"@infra-ts/core": "workspace:*",
+		"@infra-ts/core": "0.2.0",
 		"zod": "^4.0.0"
 	},
 	"engines": {
