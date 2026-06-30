@@ -1,6 +1,6 @@
 {
 	"name": "@infra-ts/neon",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "infra-ts provider for Neon — manage Neon projects, branches and compute as typed, live-reconciled config-as-code (no attribute state).",
 	"keywords": [
 		"infra-ts",

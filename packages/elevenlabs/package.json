@@ -1,6 +1,6 @@
 {
 	"name": "@infra-ts/elevenlabs",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "infra-ts provider for ElevenLabs — Conversational AI agents as typed, live-reconciled config-as-code.",
 	"keywords": [
 		"infra-ts",

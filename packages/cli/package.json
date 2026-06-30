@@ -1,6 +1,6 @@
 {
 	"name": "infra-ts",
-	"version": "0.1.1",
+	"version": "0.2.0",
 	"description": "infra-ts — typed, live-reconciled infrastructure & config as code (no attribute state). An infra.ts file, a thin REST provider system, and a CLI/SDK for Neon, Vercel and beyond.",
 	"keywords": [
 		"infra-ts",
