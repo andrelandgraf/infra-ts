@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
-import { existsSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import {
 	type Change,
@@ -129,13 +129,25 @@ function engineOptions(f: GlobalFlags, rootDir: string) {
 
 async function cmdInit(): Promise<void> {
 	const f = flags();
-	const target = join(rootOf(f), "infra.ts");
-	if (existsSync(target)) {
-		info(`infra.ts already exists at ${target}`);
-		return;
+	const rootDir = rootOf(f);
+	const target = join(rootDir, "infra.ts");
+	const existingPackageJson = readPackageJson(rootDir);
+	const hasConfig = existsSync(target);
+	const packageHasInfraTs =
+		existingPackageJson !== undefined &&
+		hasInfraTsDependency(existingPackageJson);
+
+	if (hasConfig) {
+		info(`infra.ts already exists at ${target}; leaving it unchanged.`);
+	} else if (packageHasInfraTs) {
+		info(
+			"package.json already depends on infra-ts; updating the package and leaving infra.ts untouched.",
+		);
+	} else {
+		writeFileSync(target, INIT_TEMPLATE, "utf8");
+		info(chalk.green(`Created ${target}`));
 	}
-	writeFileSync(target, INIT_TEMPLATE, "utf8");
-	info(chalk.green(`Created ${target}`));
+	await installInfraTsDevDependency(rootDir);
 	info(
 		"Next: edit your entities, then run `infra-ts plan` and `infra-ts apply`.",
 	);
@@ -363,6 +375,126 @@ function info(message: string): void {
 function printJson(value: unknown): void {
 	process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 }
+function readPackageJson(rootDir: string): Record<string, unknown> | undefined {
+	const packagePath = join(rootDir, "package.json");
+	if (!existsSync(packagePath)) return undefined;
+	return JSON.parse(readFileSync(packagePath, "utf8")) as Record<
+		string,
+		unknown
+	>;
+}
+function ensurePackageJson(rootDir: string): Record<string, unknown> {
+	const existing = readPackageJson(rootDir);
+	if (existing) return existing;
+	const created = {
+		name: packageNameFromDir(rootDir),
+		private: true,
+	};
+	writeFileSync(
+		join(rootDir, "package.json"),
+		`${JSON.stringify(created, null, "\t")}\n`,
+		"utf8",
+	);
+	info(chalk.green(`Created ${join(rootDir, "package.json")}`));
+	return created;
+}
+function packageNameFromDir(rootDir: string): string {
+	return (
+		basename(rootDir)
+			.toLowerCase()
+			.replace(/[^a-z0-9._-]+/g, "-")
+			.replace(/^-+|-+$/g, "") || "infra-app"
+	);
+}
+function hasInfraTsDependency(packageJson: Record<string, unknown>): boolean {
+	return [
+		"dependencies",
+		"devDependencies",
+		"peerDependencies",
+		"optionalDependencies",
+	].some((field) => {
+		const dependencies = packageJson[field];
+		return (
+			typeof dependencies === "object" &&
+			dependencies !== null &&
+			"infra-ts" in dependencies
+		);
+	});
+}
+function detectPackageManager(
+	rootDir: string,
+): "bun" | "npm" | "pnpm" | "yarn" {
+	const packageManager = readPackageJson(rootDir)?.packageManager;
+	if (typeof packageManager === "string") {
+		const name = packageManager.split("@")[0];
+		if (
+			name === "bun" ||
+			name === "npm" ||
+			name === "pnpm" ||
+			name === "yarn"
+		) {
+			return name;
+		}
+	}
+	if (
+		existsSync(join(rootDir, "bun.lock")) ||
+		existsSync(join(rootDir, "bun.lockb"))
+	) {
+		return "bun";
+	}
+	if (existsSync(join(rootDir, "pnpm-lock.yaml"))) return "pnpm";
+	if (existsSync(join(rootDir, "yarn.lock"))) return "yarn";
+	if (
+		existsSync(join(rootDir, "package-lock.json")) ||
+		existsSync(join(rootDir, "npm-shrinkwrap.json"))
+	) {
+		return "npm";
+	}
+	return "npm";
+}
+function installCommand(packageManager: "bun" | "npm" | "pnpm" | "yarn"): {
+	bin: string;
+	args: string[];
+} {
+	switch (packageManager) {
+		case "bun":
+			return { bin: "bun", args: ["add", "-d", "infra-ts@latest"] };
+		case "pnpm":
+			return { bin: "pnpm", args: ["add", "-D", "infra-ts@latest"] };
+		case "yarn":
+			return { bin: "yarn", args: ["add", "-D", "infra-ts@latest"] };
+		case "npm":
+			return { bin: "npm", args: ["install", "-D", "infra-ts@latest"] };
+	}
+}
+async function installInfraTsDevDependency(rootDir: string): Promise<void> {
+	ensurePackageJson(rootDir);
+	const packageManager = detectPackageManager(rootDir);
+	const { bin, args } = installCommand(packageManager);
+	info(chalk.dim(`Installing infra-ts with ${bin} ${args.join(" ")}...`));
+	await runChild(bin, args, rootDir);
+	info(chalk.green("Installed infra-ts as a dev dependency at latest."));
+}
+async function runChild(
+	bin: string,
+	args: string[],
+	cwd: string,
+): Promise<void> {
+	const child = spawn(bin, args, {
+		cwd,
+		env: process.env,
+		stdio: "inherit",
+	});
+	await new Promise<void>((resolve, reject) => {
+		child.on("error", reject);
+		child.on("close", (code) => {
+			if (code === 0) return resolve();
+			reject(
+				new Error(`${bin} ${args.join(" ")} exited with code ${code ?? 1}`),
+			);
+		});
+	});
+}
 async function confirm(prompt: string): Promise<boolean> {
 	if (!process.stdin.isTTY) return false;
 	const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -416,7 +548,7 @@ import { NeonProject, NeonPostgres } from "infra-ts/neon";
 import { VercelProject } from "infra-ts/vercel";
 
 const project = new NeonProject({
-\tname: "my-app",
+\tname: "my-app-neon",
 \tregion: "aws-us-east-1",
 \tcompute: { minCu: 0.25, maxCu: 1, suspendTimeout: "5m" },
 });
@@ -427,7 +559,7 @@ export default defineInfra({
 \t\tproject,
 \t\tdb,
 \t\tnew VercelProject({
-\t\t\tname: "my-app",
+\t\t\tname: "my-app-vercel",
 \t\t\tframework: "nextjs",
 \t\t\tenv: { DATABASE_URL: db.env.databaseUrl },
 \t\t}),

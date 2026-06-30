@@ -1,6 +1,6 @@
 {
 	"name": "@infra-ts/openai",
-	"version": "0.3.2",
+	"version": "0.3.3",
 	"description": "infra-ts provider for OpenAI — organization projects and service-account API keys as typed, live-reconciled config-as-code.",
 	"keywords": [
 		"infra-ts",
@@ -29,7 +29,7 @@
 		"typecheck": "tsc -p tsconfig.json --noEmit"
 	},
 	"dependencies": {
-		"@infra-ts/core": "0.3.2",
+		"@infra-ts/core": "0.3.3",
 		"zod": "^4.0.0"
 	},
 	"engines": {

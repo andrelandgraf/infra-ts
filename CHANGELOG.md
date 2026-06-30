@@ -7,6 +7,19 @@ changes both land in minor releases).
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-06-30
+
+### Added
+
+- `infra init` now installs `infra-ts` as a dev dependency in the target repo, using the repo's
+  package manager when it can be detected. Existing `infra.ts` files are left untouched, and
+  existing `infra-ts` package entries are updated to `latest`.
+
+### Fixed
+
+- The generated `infra.ts` scaffold now uses unique entity names, so follow-up commands like
+  `infra login` can load it without duplicate entity id errors.
+
 ## [0.3.2] - 2026-06-30
 
 ### Fixed
@@ -81,7 +94,8 @@ deploy --prebuilt` CLI flow (content-hash idempotent, deployment id/URL captured
   state in `.infra.<env>`, `parseEnv`), the `plan`/`apply`/`status`/`checkout`/`destroy` engine, the
   CLI + SDK, and the Neon, Vercel, Upstash, Resend, and Mux providers.
 
-[Unreleased]: https://github.com/andrelandgraf/infra-ts/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/andrelandgraf/infra-ts/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/andrelandgraf/infra-ts/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/andrelandgraf/infra-ts/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/andrelandgraf/infra-ts/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/andrelandgraf/infra-ts/compare/v0.2.0...v0.3.0
