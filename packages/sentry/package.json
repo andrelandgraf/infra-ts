@@ -1,6 +1,6 @@
 {
 	"name": "@infra-ts/sentry",
-	"version": "0.3.1",
+	"version": "0.3.2",
 	"description": "infra-ts provider for Sentry — teams, projects, and client keys (DSNs) as typed, live-reconciled config-as-code.",
 	"keywords": [
 		"infra-ts",
@@ -29,7 +29,7 @@
 		"typecheck": "tsc -p tsconfig.json --noEmit"
 	},
 	"dependencies": {
-		"@infra-ts/core": "0.3.1",
+		"@infra-ts/core": "0.3.2",
 		"zod": "^4.0.0"
 	},
 	"engines": {

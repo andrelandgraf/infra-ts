@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import { existsSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
@@ -37,13 +38,16 @@ interface GlobalFlags {
 	verbose?: boolean;
 }
 
+const require = createRequire(import.meta.url);
+const packageJson = require("../package.json") as { version: string };
+
 const program = new Command();
 program
 	.name("infra-ts")
 	.description(
 		"Typed, live-reconciled infrastructure & config as code (no attribute state). Declare entities in infra.ts; plan/apply against live REST APIs.",
 	)
-	.version("0.3.0")
+	.version(packageJson.version)
 	.option("-C, --cwd <dir>", "run as if started in <dir>")
 	.option("--config <path>", "path to an infra.ts config file")
 	.option("-e, --env <environment>", "target environment (default: local)")
@@ -99,8 +103,6 @@ program
 	.description("inject the resolved env into a child command")
 	.argument("<command...>", "e.g. `infra-ts run -- npm run dev`")
 	.action((command: string[]) => withErrors(() => cmdRun(command)));
-
-program.parseAsync(process.argv);
 
 // ───────────────────────────── commands ─────────────────────────────
 
@@ -432,3 +434,5 @@ export default defineInfra({
 \t],
 });
 `;
+
+program.parseAsync(process.argv);
