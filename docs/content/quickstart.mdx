@@ -17,18 +17,20 @@ sidebar:
     ```
   </Step>
   <Step title="Create infra.ts">
-    Declare resources as typed entity instances. Entity outputs are refs, so cross-provider wiring creates dependency edges automatically.
+    Declare resources as typed entity instances. An `Account` holds the org/team scope you provision into; entities reference it (and each other) through refs, so wiring creates dependency edges automatically.
 
     ```ts
     import { defineInfra } from "infra-ts";
-    import { NeonPostgres, NeonProject } from "infra-ts/neon";
+    import { NeonAccount, NeonPostgres, NeonProject } from "infra-ts/neon";
     import { VercelProject } from "infra-ts/vercel";
 
-    const project = new NeonProject({ name: "web", region: "aws-us-east-1" });
+    const neon = new NeonAccount({ name: "personal" });
+    const project = new NeonProject({ name: "web", region: "aws-us-east-1", org: neon.id });
     const db = new NeonPostgres({ name: "db", projectId: project.id });
 
     export default defineInfra({
       entities: [
+        neon,
         project,
         db,
         new VercelProject({
@@ -39,8 +41,15 @@ sidebar:
     });
     ```
   </Step>
-  <Step title="Authenticate providers">
-    Provider packages read credentials from the environment or the CLIs you already use.
+  <Step title="Authenticate and link accounts">
+    `login` runs each provider's OAuth flow through the CLIs you already use (`neonctl`, `vercel`). `link` then lets you pick the org/team for each account and records it in `.infra.<env>`.
+
+    ```bash
+    npx infra-ts login   # OAuth via the provider CLIs
+    npx infra-ts link    # pick an org/team per account → .infra.<env>
+    ```
+
+    Prefer explicit credentials in CI? Set them in the environment instead:
 
     ```bash
     export NEON_API_KEY=...
