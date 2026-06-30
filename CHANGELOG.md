@@ -7,6 +7,13 @@ changes both land in minor releases).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-06-30
+
+### Fixed
+
+- Scoped provider packages now publish package entrypoints that point at `dist`, so direct installs
+  like `@infra-ts/core` and `@infra-ts/vercel` resolve correctly from npm.
+
 ## [0.3.0] - 2026-06-30
 
 ### Added
@@ -67,7 +74,8 @@ deploy --prebuilt` CLI flow (content-hash idempotent, deployment id/URL captured
   state in `.infra.<env>`, `parseEnv`), the `plan`/`apply`/`status`/`checkout`/`destroy` engine, the
   CLI + SDK, and the Neon, Vercel, Upstash, Resend, and Mux providers.
 
-[Unreleased]: https://github.com/andrelandgraf/infra-ts/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/andrelandgraf/infra-ts/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/andrelandgraf/infra-ts/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/andrelandgraf/infra-ts/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/andrelandgraf/infra-ts/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/andrelandgraf/infra-ts/compare/v0.1.0...v0.1.1
