@@ -1,6 +1,6 @@
 {
 	"name": "@infra-ts/mux",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "infra-ts provider for Mux — signing keys, live streams, and playback restrictions as typed, live-reconciled config-as-code.",
 	"keywords": [
 		"infra-ts",
@@ -40,7 +40,7 @@
 		"typecheck": "tsc -p tsconfig.json --noEmit"
 	},
 	"dependencies": {
-		"@infra-ts/core": "0.2.0",
+		"@infra-ts/core": "0.3.0",
 		"zod": "^4.0.0"
 	},
 	"engines": {

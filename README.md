@@ -5,7 +5,7 @@
 infra-ts is what you get if you take [`neon.ts`](https://neon.com/blog/introducing-neon-ts) (Neon's
 branch config + infrastructure-as-code file) and generalize it into an open standard that any
 provider can implement. You declare your infrastructure as **typed entities** in a single
-`infra.ts` file, `infra-ts apply` reconciles them against live REST APIs, and everything stays
+`infra.ts` file, `infra apply` reconciles them against live REST APIs, and everything stays
 **fully typed** with **no attribute-state backend** — just TypeScript.
 
 ```ts
@@ -32,10 +32,10 @@ export default defineInfra({
 ```
 
 ```bash
-infra-ts plan      # show what would change (dry run, no mutations)
-infra-ts apply     # provision everything, wire env, write .env.<env>
-infra-ts status    # live state of every entity
-infra-ts destroy   # tear it all down
+infra plan      # show what would change (dry run, no mutations)
+infra apply     # provision everything, wire env, write .env.<env>
+infra status    # live state of every entity
+infra destroy   # tear it all down
 ```
 
 ---
@@ -84,6 +84,9 @@ npx infra-ts --help
 bunx infra-ts --help
 ```
 
+The global install exposes two equivalent commands, `infra` and `infra-ts` — use whichever you
+prefer. Examples below use the shorter `infra`.
+
 infra-ts resolves provider credentials from environment variables or the CLIs you already have
 authenticated (see [each provider](#providers)). For example:
 
@@ -93,11 +96,11 @@ authenticated (see [each provider](#providers)). For example:
 ## Quickstart
 
 ```bash
-infra-ts init                 # scaffold an infra.ts
+infra init                 # scaffold an infra.ts
 # edit infra.ts: declare your entities
-infra-ts plan                 # preview the changes
-infra-ts apply                # provision everything + write .env.local
-infra-ts status               # inspect live state
+infra plan                 # preview the changes
+infra apply                # provision everything + write .env.local
+infra status               # inspect live state
 ```
 
 ---
@@ -181,14 +184,14 @@ A small, git-ignored JSON file written at your project root, one per environment
 ```
 
 It's just **bindings** — the ids that tie each entity to a concrete remote resource. Delete it and
-`infra-ts apply` creates fresh resources; commit nothing here.
+`infra apply` creates fresh resources; commit nothing here.
 
 ### Accounts — auth + org/team scope
 
 Provisioning needs two per-developer things that don't belong hardcoded in `infra.ts`: a **token**
 and the **org/team to provision into**. Both are modeled by an **`Account`** node — a named entity
-that creates no remote resource. Its scope (org/team id) is bound by `infra-ts link` and stored in
-`.infra.<env>`; auth comes from `infra-ts login`.
+that creates no remote resource. Its scope (org/team id) is bound by `infra link` and stored in
+`.infra.<env>`; auth comes from `infra login`.
 
 ```ts
 import { NeonAccount, NeonProject } from "infra-ts/neon";
@@ -198,9 +201,9 @@ const project = new NeonProject({ name: "app", org: personal.id }); // org from 
 ```
 
 ```bash
-infra-ts login    # authenticate (neonctl/vercel OAuth passthrough)
-infra-ts link     # pick an org/team per account → written to .infra.<env>
-infra-ts apply    # provision into that scope
+infra login    # authenticate (neonctl/vercel OAuth passthrough)
+infra link     # pick an org/team per account → written to .infra.<env>
+infra apply    # provision into that scope
 ```
 
 Accounts are named, so two of the same provider just get two names (`new NeonAccount({ name: "work" })`).
@@ -291,26 +294,26 @@ All commands accept these global options:
 | `--json`                  | Machine-readable JSON output.                           |
 | `--verbose`               | Print debug logging.                                    |
 
-| Command                             | Description                                                                            |
-| ----------------------------------- | -------------------------------------------------------------------------------------- |
-| `infra-ts init`                     | Scaffold an `infra.ts` in the current directory.                                       |
-| `infra-ts login [providers...]`     | Authenticate each account's provider (CLI OAuth passthrough).                          |
-| `infra-ts link [accounts...]`       | Pick an org/team per account; write the scope to `.infra.<env>`.                       |
-| `infra-ts plan`                     | Show the changes `apply` would make (dry run; no mutations, no state writes).          |
-| `infra-ts apply [--prune]`          | Reconcile remote to `infra.ts`, persist `.infra.<env>`, write `.env.<env>`, run hooks. |
-| `infra-ts status`                   | Print the live state of every entity (exists + pending drift).                         |
-| `infra-ts checkout [--ignore-diff]` | Pull typed env from the live remote into `.env.<env>` (errors on drift).               |
-| `infra-ts destroy [-y]`             | Tear down every entity (destructive; reverse dependency order).                        |
-| `infra-ts run -- <cmd>`             | Inject the resolved env into a child command (nothing written to disk).                |
+| Command                          | Description                                                                            |
+| -------------------------------- | -------------------------------------------------------------------------------------- |
+| `infra init`                     | Scaffold an `infra.ts` in the current directory.                                       |
+| `infra login [providers...]`     | Authenticate each account's provider (CLI OAuth passthrough).                          |
+| `infra link [accounts...]`       | Pick an org/team per account; write the scope to `.infra.<env>`.                       |
+| `infra plan`                     | Show the changes `apply` would make (dry run; no mutations, no state writes).          |
+| `infra apply [--prune]`          | Reconcile remote to `infra.ts`, persist `.infra.<env>`, write `.env.<env>`, run hooks. |
+| `infra status`                   | Print the live state of every entity (exists + pending drift).                         |
+| `infra checkout [--ignore-diff]` | Pull typed env from the live remote into `.env.<env>` (errors on drift).               |
+| `infra destroy [-y]`             | Tear down every entity (destructive; reverse dependency order).                        |
+| `infra run -- <cmd>`             | Inject the resolved env into a child command (nothing written to disk).                |
 
-Examples:
+`infra` and `infra-ts` are aliases for the same CLI. Examples:
 
 ```bash
-infra-ts apply --json | jq '.changes'
-infra-ts apply -e production           # target the production environment
-infra-ts apply --only my-db            # reconcile just one entity
-infra-ts run -- npm run dev            # run your dev server with the resolved env injected
-infra-ts destroy --yes                 # non-interactive teardown
+infra apply --json | jq '.changes'
+infra apply -e production           # target the production environment
+infra apply --only my-db            # reconcile just one entity
+infra run -- npm run dev            # run your dev server with the resolved env injected
+infra destroy --yes                 # non-interactive teardown
 ```
 
 ---
@@ -408,7 +411,7 @@ Credentials: `NEON_API_KEY` or the `neonctl` OAuth cache.
 
 | Entity            | Manages                                                                                      | Env outputs (→ OS var)                                                                       |
 | ----------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `NeonAccount`     | org scope + auth anchor (`infra-ts login`/`link`)                                            | _none_ (`.id` = org id)                                                                      |
+| `NeonAccount`     | org scope + auth anchor (`infra login`/`link`)                                            | _none_ (`.id` = org id)                                                                      |
 | `NeonProject`     | the project, default-branch compute (autoscale/scale-to-zero) + TTL, **logical replication** | _none_ (exposes `.id` for wiring)                                                            |
 | `NeonPostgres`    | a database/role on the project's branch                                                      | `databaseUrl`, `databaseUrlUnpooled` → `DATABASE_URL`, `DATABASE_URL_UNPOOLED`               |
 | `NeonReadReplica` | a `read_only` compute endpoint (read replica) on a branch                                    | `readReplicaUrl`, `readReplicaUrlUnpooled` → `READ_REPLICA_URL`, `READ_REPLICA_URL_UNPOOLED` |
@@ -454,7 +457,7 @@ Credentials: `VERCEL_TOKEN` or the `vercel` CLI cache. Pass `team` (id or slug) 
 
 | Entity              | Manages                                                                                                                                        | Env outputs (→ OS var)                                                  |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `VercelAccount`     | team scope + auth anchor (`infra-ts login`/`link`)                                                                                             | _none_ (`.id` = team id)                                                |
+| `VercelAccount`     | team scope + auth anchor (`infra login`/`link`)                                                                                             | _none_ (`.id` = team id)                                                |
 | `VercelProject`     | the project, full **settings** (build/dev/install, node version, region, …) as drift, **env vars** (additive + update), and **custom domains** | `projectId`, `projectName` → `VERCEL_PROJECT_ID`, `VERCEL_PROJECT_NAME` |
 | `VercelEdgeConfig`  | an Edge Config store + its items (idempotent upsert)                                                                                           | `edgeConfigId` → `EDGE_CONFIG_ID`                                       |
 | `VercelWebhook`     | a project/account webhook                                                                                                                      | `webhookId` → `WEBHOOK_ID`                                              |

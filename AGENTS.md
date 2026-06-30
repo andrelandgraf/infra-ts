@@ -64,11 +64,12 @@ breaking changes are **minor** bumps; bug fixes are **patch** bumps.
    (group as Added / Changed / Fixed / Removed) and update the compare links at the bottom.
 5. **Docs.** If docs/spec changed, confirm the site builds: `cd docs && npm run build`.
 6. **Commit + tag.** `git commit -m "release: vX.Y.Z"` then `git tag vX.Y.Z`.
-7. **Push.** `git push origin main --tags` — Vercel's GitHub integration auto-redeploys the docs
-   site (**infra-ts.dev**) on push to `main`.
-8. **Publish to npm** (from an npm-authenticated shell): `bun run build && cd packages/cli &&
+7. **Push.** `git push origin main --tags`.
+8. **Deploy the docs site** (**infra-ts.dev**). Auto-deploy on push is **not** wired up, so ship it
+   manually from the linked `docs/` project: `cd docs && vercel --prod`.
+9. **Publish to npm** (from an npm-authenticated shell): `bun run build && cd packages/cli &&
 npm publish` (its `publishConfig` points `exports`/`bin`/`types` at `dist/`).
-9. **Verify.** `npx infra-ts@latest --version`.
+10. **Verify.** `npx infra-ts@latest --version`.
 
 Never release with a dirty tree or failing checks. `.infra*` and `.env*` are git-ignored and must
 never be committed.

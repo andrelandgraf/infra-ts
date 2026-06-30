@@ -15,3 +15,4 @@ dist/
 
 # Scratch space used by e2e tests
 .e2e-tmp/
+.vercel

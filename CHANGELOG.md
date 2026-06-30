@@ -7,8 +7,12 @@ changes both land in minor releases).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-30
+
 ### Added
 
+- **`infra` command alias.** The CLI now installs both `infra-ts` and `infra` bins, so
+  `npm i -g infra-ts && infra login` works alongside the existing `infra-ts` command.
 - **Self-healing CLI auth.** The REST client gained an `onUnauthorized` hook and a reusable
   `refreshOnUnauthorized({ exec, refresh, reread, current })` util: when a request uses a provider
   CLI's cached OAuth token and gets a `401`, infra-ts refreshes it (Neon runs `neonctl me`),
@@ -63,7 +67,8 @@ deploy --prebuilt` CLI flow (content-hash idempotent, deployment id/URL captured
   state in `.infra.<env>`, `parseEnv`), the `plan`/`apply`/`status`/`checkout`/`destroy` engine, the
   CLI + SDK, and the Neon, Vercel, Upstash, Resend, and Mux providers.
 
-[Unreleased]: https://github.com/andrelandgraf/infra-ts/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/andrelandgraf/infra-ts/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/andrelandgraf/infra-ts/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/andrelandgraf/infra-ts/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/andrelandgraf/infra-ts/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/andrelandgraf/infra-ts/releases/tag/v0.1.0

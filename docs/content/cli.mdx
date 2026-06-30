@@ -8,27 +8,29 @@ sidebar:
 
 The CLI and SDK share the same engine functions. Commands are thin wrappers around the runtime.
 
+Install globally with `npm i -g infra-ts` to get the `infra` command. `infra` and `infra-ts` are aliases for the same CLI, and you can also run it ad hoc with `npx infra-ts`.
+
 ## Commands
 
-| Command                 | Purpose                                                        |
-| ----------------------- | -------------------------------------------------------------- |
-| `infra-ts init`         | Scaffold an `infra.ts` file.                                   |
-| `infra-ts login`        | Authenticate provider accounts when supported.                 |
-| `infra-ts link`         | Bind account scopes such as orgs or teams into `.infra.<env>`. |
-| `infra-ts plan`         | Read live state and preview changes.                           |
-| `infra-ts apply`        | Reconcile live resources to match `infra.ts`.                  |
-| `infra-ts status`       | Show live existence and pending drift.                         |
-| `infra-ts checkout`     | Pull typed env outputs into `.env.<env>`.                      |
-| `infra-ts destroy`      | Tear down all resources bound to the current environment.      |
-| `infra-ts run -- <cmd>` | Run a child process with resolved env injected.                |
+| Command              | Purpose                                                        |
+| -------------------- | -------------------------------------------------------------- |
+| `infra init`         | Scaffold an `infra.ts` file.                                   |
+| `infra login`        | Authenticate provider accounts when supported.                 |
+| `infra link`         | Bind account scopes such as orgs or teams into `.infra.<env>`. |
+| `infra plan`         | Read live state and preview changes.                           |
+| `infra apply`        | Reconcile live resources to match `infra.ts`.                  |
+| `infra status`       | Show live existence and pending drift.                         |
+| `infra checkout`     | Pull typed env outputs into `.env.<env>`.                      |
+| `infra destroy`      | Tear down all resources bound to the current environment.      |
+| `infra run -- <cmd>` | Run a child process with resolved env injected.                |
 
 ## Global flags
 
 ```bash
-infra-ts plan --env preview
-infra-ts apply --only web db
-infra-ts status --json
-infra-ts --cwd ./apps/web plan
+infra plan --env preview
+infra apply --only web db
+infra status --json
+infra --cwd ./apps/web plan
 ```
 
 ## Safe defaults
@@ -36,8 +38,8 @@ infra-ts --cwd ./apps/web plan
 `plan` is read-only. `destroy` prompts unless `--yes` is passed. `checkout` guards against drift unless you opt into ignoring it.
 
 ```bash
-infra-ts checkout --ignore-diff
-infra-ts destroy --env preview --yes
+infra checkout --ignore-diff
+infra destroy --env preview --yes
 ```
 
 ## SDK shape

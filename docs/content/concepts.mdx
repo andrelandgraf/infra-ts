@@ -50,8 +50,8 @@ const project = new NeonProject({
 });
 ```
 
-- `infra-ts login` authenticates the account's provider (OAuth passthrough via `neonctl` / `vercel`).
-- `infra-ts link` lists your orgs/teams, you pick one, and the scope id is written to `.infra.<env>`.
+- `infra login` authenticates the account's provider (OAuth passthrough via `neonctl` / `vercel`).
+- `infra link` lists your orgs/teams, you pick one, and the scope id is written to `.infra.<env>`.
 - Entities reference the scope with `org: account.id` (Neon) or `team: account.id` (Vercel). The account resolves first, so the scope is ready before anything provisions.
 
 Two accounts of the same provider just get two names (`new NeonAccount({ name: "work" })`). The common case is one login with many orgs (shared token, scope differs per account).
@@ -100,8 +100,8 @@ If the remote drifted, infra-ts sees that drift from the provider API directly. 
 Every command targets an environment:
 
 ```bash
-npx infra-ts plan --env preview
-npx infra-ts apply --env production
+infra plan --env preview
+infra apply --env production
 ```
 
 The environment selects:

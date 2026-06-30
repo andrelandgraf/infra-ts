@@ -43,7 +43,7 @@ program
 	.description(
 		"Typed, live-reconciled infrastructure & config as code (no attribute state). Declare entities in infra.ts; plan/apply against live REST APIs.",
 	)
-	.version("0.2.0")
+	.version("0.3.0")
 	.option("-C, --cwd <dir>", "run as if started in <dir>")
 	.option("--config <path>", "path to an infra.ts config file")
 	.option("-e, --env <environment>", "target environment (default: local)")

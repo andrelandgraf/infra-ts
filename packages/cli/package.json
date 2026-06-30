@@ -1,6 +1,6 @@
 {
 	"name": "infra-ts",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "infra-ts — typed, live-reconciled infrastructure & config as code (no attribute state). An infra.ts file, a thin REST provider system, and a CLI/SDK for Neon, Vercel and beyond.",
 	"keywords": [
 		"infra-ts",
@@ -16,7 +16,8 @@
 	"author": "Andre Landgraf <andre@neon.tech>",
 	"type": "module",
 	"bin": {
-		"infra-ts": "./dist/cli.js"
+		"infra-ts": "./dist/cli.js",
+		"infra": "./dist/cli.js"
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -100,22 +101,22 @@
 		"jiti": "^2.7.0"
 	},
 	"devDependencies": {
-		"@infra-ts/core": "0.2.0",
-		"@infra-ts/dub": "0.2.0",
-		"@infra-ts/elevenlabs": "0.2.0",
-		"@infra-ts/mux": "0.2.0",
-		"@infra-ts/neon": "0.2.0",
-		"@infra-ts/openai": "0.2.0",
-		"@infra-ts/posthog": "0.2.0",
-		"@infra-ts/resend": "0.2.0",
-		"@infra-ts/runtime": "0.2.0",
-		"@infra-ts/sanity": "0.2.0",
-		"@infra-ts/sentry": "0.2.0",
-		"@infra-ts/statsig": "0.2.0",
-		"@infra-ts/stripe": "0.2.0",
-		"@infra-ts/upstash": "0.2.0",
-		"@infra-ts/vercel": "0.2.0",
-		"@infra-ts/workos": "0.2.0"
+		"@infra-ts/core": "0.3.0",
+		"@infra-ts/dub": "0.3.0",
+		"@infra-ts/elevenlabs": "0.3.0",
+		"@infra-ts/mux": "0.3.0",
+		"@infra-ts/neon": "0.3.0",
+		"@infra-ts/openai": "0.3.0",
+		"@infra-ts/posthog": "0.3.0",
+		"@infra-ts/resend": "0.3.0",
+		"@infra-ts/runtime": "0.3.0",
+		"@infra-ts/sanity": "0.3.0",
+		"@infra-ts/sentry": "0.3.0",
+		"@infra-ts/statsig": "0.3.0",
+		"@infra-ts/stripe": "0.3.0",
+		"@infra-ts/upstash": "0.3.0",
+		"@infra-ts/vercel": "0.3.0",
+		"@infra-ts/workos": "0.3.0"
 	},
 	"engines": {
 		"node": ">=20"

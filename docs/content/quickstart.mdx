@@ -8,13 +8,16 @@ sidebar:
 
 <Steps>
   <Step title="Install or run the CLI">
-    Use the published package directly.
+    Install globally to get the `infra` command.
 
     ```bash
-    npm i -D infra-ts
-    # or run ad hoc
+    npm i -g infra-ts
+    infra --help
+    # or run ad hoc, without installing
     npx infra-ts --help
     ```
+
+    `infra` and `infra-ts` are the same CLI — use whichever you prefer.
 
   </Step>
   <Step title="Create infra.ts">
@@ -47,8 +50,8 @@ sidebar:
     `login` runs each provider's OAuth flow through the CLIs you already use (`neonctl`, `vercel`). `link` then lets you pick the org/team for each account and records it in `.infra.<env>`.
 
     ```bash
-    npx infra-ts login   # OAuth via the provider CLIs
-    npx infra-ts link    # pick an org/team per account → .infra.<env>
+    infra login   # OAuth via the provider CLIs
+    infra link    # pick an org/team per account → .infra.<env>
     ```
 
     Prefer explicit credentials in CI? Set them in the environment instead:
@@ -63,9 +66,9 @@ sidebar:
     `plan` reads live remote state and shows changes without mutating anything.
 
     ```bash
-    npx infra-ts plan
-    npx infra-ts apply
-    npx infra-ts status
+    infra plan
+    infra apply
+    infra status
     ```
 
   </Step>
@@ -80,7 +83,7 @@ The first `apply` writes `.infra.<env>`, a tiny identity link file. Keep it loca
 Entities can expose typed environment outputs. `checkout` pulls those values from live resources and writes `.env.<env>`.
 
 ```bash
-npx infra-ts checkout --env local
+infra checkout --env local
 ```
 
 In application code, `parseEnv` validates the process environment without network access:
@@ -95,8 +98,8 @@ env["db"].databaseUrl;
 
 ## Run with resolved env
 
-`infra-ts run` checks out env values in memory and runs a child command with those variables injected.
+`infra run` checks out env values in memory and runs a child command with those variables injected.
 
 ```bash
-npx infra-ts run -- npm run dev
+infra run -- npm run dev
 ```
