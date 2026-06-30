@@ -1,6 +1,6 @@
 {
 	"name": "@infra-ts/core",
-	"version": "0.4.0",
+	"version": "0.4.1",
 	"description": "The infra-ts open standard: the provider contract, defineConfig, typed env, and the REST/diff/state primitives every infra-ts provider builds on.",
 	"keywords": [
 		"infra-ts",

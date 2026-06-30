@@ -38,6 +38,8 @@ export interface CliAuth {
 	login: string[];
 }
 
+const ACCOUNT_BRAND = Symbol.for("infra-ts.account");
+
 // Hand-rolled Standard Schemas (core stays validator-agnostic — no zod dependency).
 const emptyEnvSchema: StandardSchemaV1<unknown, Record<string, never>> = {
 	"~standard": {
@@ -80,6 +82,7 @@ export abstract class Account<Creds = unknown> extends Entity<
 	AccountState,
 	AccountScope | null
 > {
+	readonly [ACCOUNT_BRAND] = true;
 	readonly envSchema = emptyEnvSchema;
 	readonly stateSchema = scopeStateSchema;
 	readonly envKeys = [] as const;
@@ -130,4 +133,18 @@ export abstract class Account<Creds = unknown> extends Entity<
 	async deprovision(): Promise<void> {
 		// An account never creates or deletes the remote org/team.
 	}
+}
+
+export function isAccount(value: unknown): value is Account {
+	if (!value || typeof value !== "object") return false;
+	const candidate = value as {
+		[ACCOUNT_BRAND]?: unknown;
+		cliAuth?: unknown;
+		listScopes?: unknown;
+	};
+	return (
+		candidate[ACCOUNT_BRAND] === true ||
+		(typeof candidate.cliAuth === "function" &&
+			typeof candidate.listScopes === "function")
+	);
 }

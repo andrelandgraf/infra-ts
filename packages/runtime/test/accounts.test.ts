@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { defineInfra, silentLogger } from "@infra-ts/core";
+import { defineInfra, type Infra, silentLogger } from "@infra-ts/core";
 import { apply } from "../src/lib/engine.js";
 import { collectAccounts, link } from "../src/lib/accounts.js";
 import { readState } from "../src/lib/state-file.js";
@@ -37,6 +37,26 @@ describe("Account node", () => {
 			entities: [account, new FakeEntity({ name: "e" })],
 		});
 		expect(collectAccounts(infra).map((a) => a.name)).toEqual(["acct"]);
+	});
+
+	test("collectAccounts recognizes account-like entities across package copies", () => {
+		const foreignAccount = {
+			name: "foreign",
+			cliAuth: () => ({
+				providerId: "fake",
+				envVar: "FAKE_TOKEN",
+				detect: ["fake", "me"],
+				login: ["fake", "login"],
+			}),
+			listScopes: async () => [],
+		};
+		const infra = {
+			entities: [foreignAccount],
+			ordered: [foreignAccount],
+			defaultEnvironment: "local",
+			renames: [],
+		} as unknown as Infra;
+		expect(collectAccounts(infra).map((a) => a.name)).toEqual(["foreign"]);
 	});
 });
 

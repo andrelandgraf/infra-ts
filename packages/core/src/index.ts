@@ -40,6 +40,7 @@ export { assertUniqueIds, collectEntities, topoSort } from "./lib/graph.js";
 
 export {
 	Account,
+	isAccount,
 	type AccountOptions,
 	type AccountScope,
 	type AccountState,

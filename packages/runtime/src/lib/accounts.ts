@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import {
 	Account,
+	isAccount,
 	type AnyEntity,
 	type CliTool,
 	ErrorCode,
@@ -17,7 +18,7 @@ import { resolveEnvironment } from "./engine.js";
 export function collectAccounts(infra: Infra): Account[] {
 	const out: Account[] = [];
 	for (const entity of infra.ordered) {
-		if (entity instanceof Account) out.push(entity);
+		if (isAccount(entity)) out.push(entity);
 	}
 	return out;
 }
