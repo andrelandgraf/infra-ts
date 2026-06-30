@@ -9,18 +9,19 @@ sidebar:
 The umbrella `infra-ts` package includes the first provider set as subpath imports. Each provider is a thin wrapper over the provider's REST API, not a separate engine.
 
 <CardGroup cols={2}>
-  <Card title="Neon" icon="database">
-    Projects, branches, compute, Postgres, auth, and replicas.
-  </Card>
-  <Card title="Vercel" icon="cloud">
-    Projects and environment variables wired from other entities.
-  </Card>
-  <Card title="Upstash" icon="server">
-    Redis, Vector, and QStash-style infrastructure.
-  </Card>
-  <Card title="SaaS providers" icon="plug">
-    Resend, Mux, Sentry, WorkOS, Sanity, Statsig, Dub, Stripe, PostHog, ElevenLabs, and OpenAI.
-  </Card>
+	<Card title="Neon" icon="database">
+		Projects, branches, compute, Postgres, auth, and replicas.
+	</Card>
+	<Card title="Vercel" icon="cloud">
+		Projects, env vars, domains, edge config, and deployments (CLI or REST).
+	</Card>
+	<Card title="Upstash" icon="server">
+		Redis, Vector, and QStash-style infrastructure.
+	</Card>
+	<Card title="SaaS providers" icon="plug">
+		Resend, Mux, Sentry, WorkOS, Sanity, Statsig, Dub, Stripe, PostHog,
+		ElevenLabs, and OpenAI.
+	</Card>
 </CardGroup>
 
 ## Imports
@@ -46,10 +47,29 @@ The engine handles graph ordering, refs, state-file I/O, env output, hooks, and 
 
 ## Design rule
 
-Providers should stay thin. Shelling out to vendor CLIs, storing hidden snapshots, or bundling unrelated provider logic into a single resource makes the graph harder to reason about.
-
-The happy path is boring:
+For **reconciled config** (projects, env vars, domains) providers stay thin. The happy path is boring:
 
 ```txt
 typed options -> REST API read -> pure diff -> REST API mutation
 ```
+
+## Command-backed entities
+
+Transport is the entity's choice. For **imperative, vendor-owned actions** — build and deploy — the vendor CLI _is_ the reference implementation, so infra-ts delegates to it rather than re-implementing the flow (and drifting from it). The runtime gives `provision` an `exec` capability that injects resolved credentials as env, and an entity can declare the CLIs it needs via `requiredTools()`, which `login`/`link` detect and (with confirmation) install — preferring ephemeral `npx`. infra-ts already does this for `login` (provider OAuth) and now for `VercelDeployment`.
+
+```ts
+import { VercelProject, VercelDeployment } from "infra-ts/vercel";
+
+const web = new VercelProject({ name: "app", framework: "nextjs" });
+
+// defaults to the documented `vercel pull → build → deploy --prebuilt` CI flow;
+// `mode: "rest"` uploads source via the API instead. Content-hash idempotent.
+new VercelDeployment({
+	name: "app-deploy",
+	project: web.id,
+	cwd: "./apps/web",
+	production: true,
+});
+```
+
+Command-backed entities still persist only identity state, stay idempotent (content hash), and emit typed env — so REST vs CLI is a free, per-entity choice.

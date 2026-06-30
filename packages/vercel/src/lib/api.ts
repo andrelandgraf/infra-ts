@@ -1,4 +1,9 @@
-import { createRestClient, type RestClient } from "@infra-ts/core";
+import {
+	createRestClient,
+	ErrorCode,
+	InfraError,
+	type RestClient,
+} from "@infra-ts/core";
 
 export type VercelEnvTarget = "production" | "preview" | "development";
 export type VercelEnvType = "plain" | "encrypted" | "sensitive";
@@ -85,6 +90,9 @@ export interface CreateEnvInput {
 export class VercelApi {
 	private readonly rest: RestClient;
 	private readonly teamId: string | undefined;
+	private readonly token: string;
+	private readonly apiHost: string;
+	private readonly doFetch: typeof fetch;
 
 	constructor(options: {
 		token: string;
@@ -92,6 +100,9 @@ export class VercelApi {
 		teamId?: string;
 		fetch?: typeof fetch;
 	}) {
+		this.token = options.token;
+		this.apiHost = options.apiHost.replace(/\/$/, "");
+		this.doFetch = options.fetch ?? globalThis.fetch;
 		this.rest = createRestClient({
 			provider: "vercel",
 			baseUrl: options.apiHost,
@@ -434,6 +445,75 @@ export class VercelApi {
 			allowStatuses: [404],
 		});
 	}
+
+	// ─── deployments (REST transport) ────────────────────────────────────────
+
+	/** Upload one file's bytes keyed by its sha1 digest (`POST /v2/files`). */
+	async uploadFile(sha: string, bytes: Uint8Array): Promise<void> {
+		const url = new URL(`${this.apiHost}/v2/files`);
+		if (this.teamId) url.searchParams.set("teamId", this.teamId);
+		const res = await this.doFetch(url.toString(), {
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${this.token}`,
+				"Content-Type": "application/octet-stream",
+				"x-vercel-digest": sha,
+				"Content-Length": String(bytes.byteLength),
+			},
+			body: bytes,
+		});
+		if (!res.ok) {
+			const body = await res.text();
+			throw new InfraError(
+				ErrorCode.RequestFailed,
+				`vercel: POST /v2/files → ${res.status}: ${body.slice(0, 280)}`,
+				{ details: { provider: "vercel", status: res.status } },
+			);
+		}
+	}
+
+	async createDeployment(input: {
+		name: string;
+		project: string;
+		target?: "production" | "preview";
+		files: { file: string; sha: string; size: number }[];
+		projectSettings?: Record<string, unknown>;
+	}): Promise<VercelDeploymentSnapshot> {
+		return this.rest.post<VercelDeploymentSnapshot>("/v13/deployments", {
+			query: this.q(),
+			body: {
+				name: input.name,
+				project: input.project,
+				...(input.target ? { target: input.target } : {}),
+				files: input.files,
+				...(input.projectSettings
+					? { projectSettings: input.projectSettings }
+					: {}),
+			},
+		});
+	}
+
+	async getDeployment(
+		idOrUrl: string,
+	): Promise<VercelDeploymentSnapshot | null> {
+		return this.rest.get<VercelDeploymentSnapshot | null>(
+			`/v13/deployments/${idOrUrl}`,
+			{ query: this.q(), allowStatuses: [404] },
+		);
+	}
+
+	async deleteDeployment(id: string): Promise<void> {
+		await this.rest.delete(`/v13/deployments/${id}`, {
+			query: this.q(),
+			allowStatuses: [404],
+		});
+	}
+}
+
+export interface VercelDeploymentSnapshot {
+	id: string;
+	url: string;
+	readyState?: string;
 }
 
 export interface VercelDnsRecordSnapshot {

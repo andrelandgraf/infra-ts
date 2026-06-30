@@ -711,10 +711,35 @@ async provision(ctx) {
 }
 ```
 
+### 11.4.1 Command-backed entities (transport is the entity's choice)
+
+An entity's lifecycle may talk to its provider over **REST**, a **vendor CLI**, or **both** — the
+engine is transport-agnostic (it only calls the lifecycle methods). Use REST for **reconciled
+config** (projects, env, domains); for **imperative, vendor-owned actions** (build + deploy) the
+vendor CLI _is_ the reference implementation, so delegating to it matches default behavior exactly
+rather than re-implementing it. (`infra login` already drives the provider's OAuth CLI.)
+
+Two capabilities make this first-class:
+
+- **`ctx.exec(command, { cwd?, env?, input? })`** — the runtime injects the entity's resolved
+  credentials as env (so e.g. `VERCEL_TOKEN` is present without leaking on the command line),
+  streams stderr, captures stdout, and throws `InfraError` on a non-zero exit. Available to
+  `provision`/`pullEnv`/`deprovision`; keep `read`/`diff` read-only.
+- **`requiredTools(): CliTool[]`** — declare the CLIs an entity needs (`{ id, detect, npx?,
+install? }`). `login`/`link` (and a CLI-apply preflight) detect them, prefer ephemeral
+  `npx`/`bunx` (no global install), and offer a **confirmed** global install otherwise.
+
+Command-backed entities still obey the full contract: persist **only identity state** (capture the
+CLI's output id/url; never adopt its own state files like `.vercel/project.json` — inject ids via
+env so `.infra` stays the single source of truth), stay **idempotent** (content hash, above), and
+emit **typed env**. `VercelDeployment` is the first example: it defaults to `vercel pull` → `build`
+→ `deploy --prebuilt` (the documented CI flow), with a `mode: "rest"` source-upload fallback.
+
 ### 11.5 `deprovision(ctx)`
 
 Tear the resource down. Called by `destroy` and by prune (§15). Destructive; never called by
-`apply`'s normal path.
+`apply`'s normal path. Command-backed deployments typically **no-op** here — a deployment is
+immutable history backing the live alias, not something to auto-delete.
 
 ---
 

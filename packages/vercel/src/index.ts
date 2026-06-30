@@ -10,6 +10,7 @@
 export {
 	VercelAccessGroup,
 	VercelAccount,
+	VercelDeployment,
 	VercelDnsRecord,
 	VercelEdgeConfig,
 	VercelLogDrain,
@@ -17,12 +18,14 @@ export {
 	VercelWebhook,
 	type VercelAccessGroupOptions,
 	type VercelAccountOptions,
+	type VercelDeploymentOptions,
 	type VercelDnsRecordOptions,
 	type VercelEdgeConfigOptions,
 	type VercelLogDrainOptions,
 	type VercelProjectOptions,
 	type VercelWebhookOptions,
 } from "./lib/entities.js";
+export { collectFiles, contentHash, type DeployFile } from "./lib/deploy.js";
 
 export {
 	DEFAULT_VERCEL_API_HOST,
@@ -34,6 +37,7 @@ export {
 export { VercelApi, VERCEL_SETTING_KEYS } from "./lib/api.js";
 export type {
 	VercelAccessGroupSnapshot,
+	VercelDeploymentSnapshot,
 	VercelDnsRecordSnapshot,
 	VercelDomainSnapshot,
 	VercelEnvTarget,

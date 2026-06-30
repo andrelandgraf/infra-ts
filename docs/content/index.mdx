@@ -11,18 +11,18 @@ infra-ts lets you declare infrastructure as typed entities in a single `infra.ts
 There is no attribute-state backend. infra-ts persists only a small per-environment identity link file, re-reads the live remote on every command, and treats provider APIs as the source of truth.
 
 <CardGroup cols={2}>
-  <Card title="Quickstart" href="/quickstart" icon="rocket">
-    Install the CLI, write an `infra.ts`, and run your first plan.
-  </Card>
-  <Card title="Core concepts" href="/concepts" icon="blocks">
-    Learn entities, refs, identity state, typed env, and live reconciliation.
-  </Card>
-  <Card title="Providers" href="/providers" icon="plug">
-    Use Neon, Vercel, Upstash, Resend, Mux, Stripe, OpenAI, and more.
-  </Card>
-  <Card title="The standard" href="/standard" icon="file-text">
-    Understand the small entity contract behind the ecosystem.
-  </Card>
+	<Card title="Quickstart" href="/quickstart" icon="rocket">
+		Install the CLI, write an `infra.ts`, and run your first plan.
+	</Card>
+	<Card title="Core concepts" href="/concepts" icon="blocks">
+		Learn entities, refs, identity state, typed env, and live reconciliation.
+	</Card>
+	<Card title="Providers" href="/providers" icon="plug">
+		Use Neon, Vercel, Upstash, Resend, Mux, Stripe, OpenAI, and more.
+	</Card>
+	<Card title="The standard" href="/standard" icon="file-text">
+		Understand the small entity contract behind the ecosystem.
+	</Card>
 </CardGroup>
 
 ## Why it exists
@@ -44,7 +44,11 @@ import { NeonAccount, NeonPostgres, NeonProject } from "infra-ts/neon";
 import { VercelProject } from "infra-ts/vercel";
 
 const neon = new NeonAccount({ name: "personal" });
-const project = new NeonProject({ name: "my-app", region: "aws-us-east-1", org: neon.id });
+const project = new NeonProject({
+	name: "my-app",
+	region: "aws-us-east-1",
+	org: neon.id,
+});
 const db = new NeonPostgres({ name: "my-db", projectId: project.id });
 
 export default defineInfra({

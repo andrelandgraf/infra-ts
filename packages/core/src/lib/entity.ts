@@ -92,10 +92,49 @@ export interface EntityCommon<
 	envName?: (key: string) => string;
 }
 
+/** Result of running a subprocess via {@link Exec}. */
+export interface ExecResult {
+	stdout: string;
+	stderr: string;
+	code: number;
+}
+/** Options for {@link Exec}. */
+export interface ExecOptions {
+	cwd?: string;
+	/** Extra env merged over `process.env` + the entity's resolved credentials. */
+	env?: Record<string, string>;
+	/** Data to write to stdin. */
+	input?: string;
+}
+/**
+ * Run a vendor CLI from inside an entity (the runtime injects the entity's resolved credentials as
+ * env, so e.g. `VERCEL_TOKEN` is present without leaking it on the command line). Throws
+ * `InfraError` on a non-zero exit. Use this for **command-backed** entities (deploys, etc.); keep
+ * `read`/`diff` read-only.
+ */
+export type Exec = (
+	command: string[],
+	options?: ExecOptions,
+) => Promise<ExecResult>;
+
+/** A vendor CLI an entity/account depends on — detected (and optionally installed) by the engine. */
+export interface CliTool {
+	/** Stable id for dedup, e.g. "vercel". */
+	id: string;
+	/** Command that exits 0 when the tool is available, e.g. `["vercel", "--version"]`. */
+	detect: string[];
+	/** Package spec for ephemeral `npx`/`bunx` execution (preferred; no global install). */
+	npx?: string;
+	/** Command to install the tool globally (run only after confirmation). */
+	install?: string[];
+}
+
 export interface BaseContext<Creds> {
 	environment: string;
 	credentials: Creds;
 	logger: Logger;
+	/** Runs a vendor CLI with resolved credentials injected as env. Provided by the runtime. */
+	exec?: Exec;
 }
 export interface ReadContext<Creds, State> extends BaseContext<Creds> {
 	state: State | null;
@@ -201,6 +240,15 @@ export abstract class Entity<
 	 */
 	resolveCredentials(bag: Record<string, string | undefined>): unknown {
 		return bag;
+	}
+
+	/**
+	 * Vendor CLIs this entity needs (for command-backed entities). The engine detects them during
+	 * `login`/`link` and before a CLI-backed `apply`, preferring ephemeral `npx`/`bunx` and offering
+	 * a confirmed global install. Default: none.
+	 */
+	requiredTools(): CliTool[] {
+		return [];
 	}
 
 	/** Read the live remote (using `ctx.state`). `null` = does not exist remotely. */

@@ -459,6 +459,7 @@ Credentials: `VERCEL_TOKEN` or the `vercel` CLI cache. Pass `team` (id or slug) 
 | `VercelDnsRecord`   | a DNS record on an account domain                                                                                                              | —                                                                       |
 | `VercelLogDrain`    | a configurable log drain                                                                                                                       | —                                                                       |
 | `VercelAccessGroup` | an access group                                                                                                                                | `vercelAccessGroupId` → `VERCEL_ACCESS_GROUP_ID`                        |
+| `VercelDeployment`  | a deployment — delegates to the `vercel` CLI by default (or REST), content-hash idempotent                                                     | `deploymentUrl` → `DEPLOYMENT_URL`                                      |
 
 ```ts
 import {
@@ -487,8 +488,27 @@ new VercelEdgeConfig({
 });
 ```
 
+**Deployments** are a [command-backed entity](#command-backed-entities). `VercelDeployment` defaults
+to delegating to the `vercel` CLI (the same `pull` → `build` → `deploy --prebuilt` flow Vercel
+documents for CI) so it matches their default behavior exactly; a `mode: "rest"` uploads source via
+the API instead. It's content-hash idempotent — unchanged source is a no-op.
+
+```ts
+import { VercelProject, VercelDeployment } from "infra-ts/vercel";
+
+const web = new VercelProject({ name: "app", framework: "nextjs" });
+new VercelDeployment({
+	name: "app-deploy",
+	project: web.id, // → VERCEL_PROJECT_ID (injected as env, never on the command line)
+	cwd: "./apps/web",
+	production: true, // else the target derives from the active environment
+	// prebuilt: true,      // run `vercel build` locally; otherwise Vercel builds remotely
+	// mode: "rest",        // upload source via REST instead of the CLI
+});
+```
+
 > **Out of scope (by design):** Web Analytics / Speed Insights toggles aren't in Vercel's public
-> REST API, and deployments are a build concern (left to Vercel's own tooling).
+> REST API.
 
 ### `infra-ts/upstash` — Upstash
 
@@ -790,27 +810,52 @@ every other entity.
 
 ---
 
+## Command-backed entities
+
+Transport is the entity's choice — REST, a vendor CLI, or both. For **reconciled config** (projects,
+env vars, domains) stay on thin REST. For **imperative, vendor-owned actions** (build + deploy), the
+vendor CLI _is_ the reference implementation, so delegating to it matches default behavior exactly
+instead of re-implementing it. (infra-ts already does this for `infra login`, which drives the
+provider's OAuth CLI.)
+
+Two pieces make this first-class:
+
+- **`ctx.exec`** — the runtime hands `provision` a process runner that injects the entity's resolved
+  credentials as **env** (so e.g. `VERCEL_TOKEN` is present without leaking on the command line) and
+  throws `InfraError` on a non-zero exit. Keep `read`/`diff` read-only.
+- **`requiredTools()`** — an entity declares the CLIs it needs (`{ id, detect, npx?, install? }`).
+  `infra login`/`link` detect them, prefer ephemeral `npx`/`bunx` (no global install), and offer a
+  **confirmed** global install otherwise — turning infra-ts into a CLI orchestrator on top of the
+  REST reconciler.
+
+Command-backed entities still obey the full contract: persist **only identity state** (capture the
+CLI's output id/url; don't adopt its `.vercel` snapshot), stay **idempotent** (content hash, §11.4),
+and emit **typed env**. So REST vs CLI is a free, per-entity choice. `VercelDeployment` is the first
+example.
+
+---
+
 ## Packages
 
-| Package                                       | Description                                                                                                                                       |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`infra-ts`](packages/cli)                    | Umbrella: the `infra-ts` CLI + SDK + bundled providers (`infra-ts/neon`, `/vercel`, `/upstash`, `/resend`, `/mux`).                               |
-| [`@infra-ts/core`](packages/core)             | The open standard: `Entity` contract, `defineInfra`, refs/DAG, env mapping, REST client, `parseEnv`, errors.                                      |
-| [`@infra-ts/runtime`](packages/runtime)       | The engine: config loading (jiti), `.infra.<env>` I/O, `plan`/`apply`/`status`/`checkout`/`destroy`, hooks, dotenv.                               |
-| [`@infra-ts/neon`](packages/neon)             | Neon entities: `NeonAccount`, `NeonProject` (incl. logical replication), `NeonPostgres`, `NeonReadReplica`, `NeonAuth`, `NeonDataApi`.            |
-| [`@infra-ts/vercel`](packages/vercel)         | Vercel entities: `VercelAccount`, `VercelProject`, `VercelEdgeConfig`, `VercelWebhook`, `VercelDnsRecord`, `VercelLogDrain`, `VercelAccessGroup`. |
-| [`@infra-ts/upstash`](packages/upstash)       | Upstash entities: `UpstashRedis`, `UpstashVector`, `UpstashQStashQueue`, `UpstashQStashSchedule`, `UpstashQStashTopic`.                           |
-| [`@infra-ts/resend`](packages/resend)         | Resend entities: `ResendDomain`, `ResendApiKey`, `ResendAudience`, `ResendWebhook`.                                                               |
-| [`@infra-ts/mux`](packages/mux)               | Mux entities: `MuxSigningKey`, `MuxLiveStream`, `MuxPlaybackRestriction`, `MuxLiveStreamSimulcastTarget`.                                         |
-| [`@infra-ts/sentry`](packages/sentry)         | Sentry entities: `SentryTeam`, `SentryProject`, `SentryClientKey`.                                                                                |
-| [`@infra-ts/workos`](packages/workos)         | WorkOS entities: `WorkosOrganization`.                                                                                                            |
-| [`@infra-ts/sanity`](packages/sanity)         | Sanity entities: `SanityDataset`, `SanityToken`, `SanityCorsOrigin`.                                                                              |
-| [`@infra-ts/statsig`](packages/statsig)       | Statsig entities: `StatsigGate`, `StatsigDynamicConfig`, `StatsigExperiment`.                                                                     |
-| [`@infra-ts/dub`](packages/dub)               | Dub entities: `DubDomain`, `DubTag`, `DubLink`.                                                                                                   |
-| [`@infra-ts/stripe`](packages/stripe)         | Stripe entities: `StripeWebhookEndpoint`, `StripeProduct`, `StripePrice`.                                                                         |
-| [`@infra-ts/posthog`](packages/posthog)       | PostHog entities: `PosthogProject`, `PosthogFeatureFlag`.                                                                                         |
-| [`@infra-ts/elevenlabs`](packages/elevenlabs) | ElevenLabs entities: `ElevenLabsAgent`.                                                                                                           |
-| [`@infra-ts/openai`](packages/openai)         | OpenAI entities: `OpenAiProject`, `OpenAiServiceAccount`.                                                                                         |
+| Package                                       | Description                                                                                                                                                           |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`infra-ts`](packages/cli)                    | Umbrella: the `infra-ts` CLI + SDK + bundled providers (`infra-ts/neon`, `/vercel`, `/upstash`, `/resend`, `/mux`).                                                   |
+| [`@infra-ts/core`](packages/core)             | The open standard: `Entity` contract, `defineInfra`, refs/DAG, env mapping, REST client, `parseEnv`, errors.                                                          |
+| [`@infra-ts/runtime`](packages/runtime)       | The engine: config loading (jiti), `.infra.<env>` I/O, `plan`/`apply`/`status`/`checkout`/`destroy`, hooks, dotenv.                                                   |
+| [`@infra-ts/neon`](packages/neon)             | Neon entities: `NeonAccount`, `NeonProject` (incl. logical replication), `NeonPostgres`, `NeonReadReplica`, `NeonAuth`, `NeonDataApi`.                                |
+| [`@infra-ts/vercel`](packages/vercel)         | Vercel entities: `VercelAccount`, `VercelProject`, `VercelDeployment`, `VercelEdgeConfig`, `VercelWebhook`, `VercelDnsRecord`, `VercelLogDrain`, `VercelAccessGroup`. |
+| [`@infra-ts/upstash`](packages/upstash)       | Upstash entities: `UpstashRedis`, `UpstashVector`, `UpstashQStashQueue`, `UpstashQStashSchedule`, `UpstashQStashTopic`.                                               |
+| [`@infra-ts/resend`](packages/resend)         | Resend entities: `ResendDomain`, `ResendApiKey`, `ResendAudience`, `ResendWebhook`.                                                                                   |
+| [`@infra-ts/mux`](packages/mux)               | Mux entities: `MuxSigningKey`, `MuxLiveStream`, `MuxPlaybackRestriction`, `MuxLiveStreamSimulcastTarget`.                                                             |
+| [`@infra-ts/sentry`](packages/sentry)         | Sentry entities: `SentryTeam`, `SentryProject`, `SentryClientKey`.                                                                                                    |
+| [`@infra-ts/workos`](packages/workos)         | WorkOS entities: `WorkosOrganization`.                                                                                                                                |
+| [`@infra-ts/sanity`](packages/sanity)         | Sanity entities: `SanityDataset`, `SanityToken`, `SanityCorsOrigin`.                                                                                                  |
+| [`@infra-ts/statsig`](packages/statsig)       | Statsig entities: `StatsigGate`, `StatsigDynamicConfig`, `StatsigExperiment`.                                                                                         |
+| [`@infra-ts/dub`](packages/dub)               | Dub entities: `DubDomain`, `DubTag`, `DubLink`.                                                                                                                       |
+| [`@infra-ts/stripe`](packages/stripe)         | Stripe entities: `StripeWebhookEndpoint`, `StripeProduct`, `StripePrice`.                                                                                             |
+| [`@infra-ts/posthog`](packages/posthog)       | PostHog entities: `PosthogProject`, `PosthogFeatureFlag`.                                                                                                             |
+| [`@infra-ts/elevenlabs`](packages/elevenlabs) | ElevenLabs entities: `ElevenLabsAgent`.                                                                                                                               |
+| [`@infra-ts/openai`](packages/openai)         | OpenAI entities: `OpenAiProject`, `OpenAiServiceAccount`.                                                                                                             |
 
 Architecture: **functional core, imperative shell.** `@infra-ts/core` is pure (types + validation +
 pure helpers, no filesystem or child processes). `@infra-ts/runtime` is the imperative shell (I/O,

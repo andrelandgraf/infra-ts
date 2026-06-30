@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import {
 	Account,
 	type AnyEntity,
+	type CliTool,
 	ErrorCode,
 	type Infra,
 	InfraError,
@@ -139,4 +140,72 @@ export function accountCredentials(
 	environment: string,
 ): unknown {
 	return resolveEntityCredentials(infra, account, environment);
+}
+
+export interface ToolStatus {
+	id: string;
+	status: "available" | "npx" | "installed" | "declined" | "missing";
+}
+export interface EnsureToolsOptions {
+	/** Skip the confirmation prompt and install directly (CI). */
+	yes?: boolean;
+	/** Prompt the user before a global install. Return true to proceed. */
+	confirm?: (tool: CliTool) => Promise<boolean>;
+	logger?: Logger;
+}
+
+function detectTool(tool: CliTool): boolean {
+	const [cmd, ...args] = tool.detect;
+	if (!cmd) return false;
+	const res = spawnSync(cmd, args, { stdio: "ignore" });
+	return !res.error && res.status === 0;
+}
+
+/**
+ * Ensure the vendor CLIs declared by the config's entities (`requiredTools()`) are usable. A tool
+ * already on PATH is fine; one with an `npx` spec runs ephemerally (no install); otherwise we offer
+ * a confirmed global install. Run during `login`/`link` and before a CLI-backed `apply`.
+ */
+export async function ensureTools(
+	infra: Infra,
+	options: EnsureToolsOptions = {},
+): Promise<ToolStatus[]> {
+	const logger = options.logger ?? silentLogger;
+	const tools = new Map<string, CliTool>();
+	for (const entity of infra.ordered) {
+		for (const tool of entity.requiredTools()) tools.set(tool.id, tool);
+	}
+	const results: ToolStatus[] = [];
+	for (const tool of tools.values()) {
+		if (detectTool(tool)) {
+			results.push({ id: tool.id, status: "available" });
+			continue;
+		}
+		if (tool.npx) {
+			// Will run ephemerally via npx/bunx — nothing to install.
+			results.push({ id: tool.id, status: "npx" });
+			continue;
+		}
+		if (tool.install) {
+			const ok =
+				options.yes || (options.confirm ? await options.confirm(tool) : false);
+			if (!ok) {
+				logger.warn(
+					`${tool.id} CLI not found. Install it with: ${tool.install.join(" ")}`,
+				);
+				results.push({ id: tool.id, status: "declined" });
+				continue;
+			}
+			const [cmd, ...args] = tool.install;
+			const run = cmd ? spawnSync(cmd, args, { stdio: "inherit" }) : null;
+			results.push({
+				id: tool.id,
+				status: run && run.status === 0 ? "installed" : "missing",
+			});
+			continue;
+		}
+		logger.warn(`${tool.id} CLI not found and no install method is declared.`);
+		results.push({ id: tool.id, status: "missing" });
+	}
+	return results;
 }

@@ -12,6 +12,7 @@ import {
 	validate,
 } from "@infra-ts/core";
 import { resolveEntityCredentials } from "./credentials.js";
+import { createExec, credentialsEnv } from "./exec.js";
 import { envFileFor, toEntries, writeEnvFile } from "./dotenv.js";
 import { runHook } from "./hooks-runner.js";
 import {
@@ -110,7 +111,13 @@ export async function plan(
 		const credentials = resolveEntityCredentials(infra, entity, environment);
 		entity.bindOutputs(outputs);
 		const entState = state.entities[entity.name] ?? null;
-		const ctx = { environment, credentials, logger, state: entState };
+		const ctx = {
+			environment,
+			credentials,
+			logger,
+			state: entState,
+			exec: createExec(credentialsEnv(credentials)),
+		};
 		const remote = await entity.read(ctx);
 		changes.push(...tagged(entity.diff(remote, { environment }), entity.name));
 		if (remote !== null) {
@@ -147,7 +154,13 @@ export async function apply(
 		const credentials = resolveEntityCredentials(infra, entity, environment);
 		entity.bindOutputs(outputs);
 		const entState = state.entities[entity.name] ?? null;
-		const ctx = { environment, credentials, logger, state: entState };
+		const ctx = {
+			environment,
+			credentials,
+			logger,
+			state: entState,
+			exec: createExec(credentialsEnv(credentials)),
+		};
 
 		await runHook(entity.hooks?.beforeApply, { environment }, { cwd: rootDir });
 
@@ -229,7 +242,13 @@ export async function status(
 		const credentials = resolveEntityCredentials(infra, entity, environment);
 		entity.bindOutputs(outputs);
 		const entState = state.entities[entity.name] ?? null;
-		const ctx = { environment, credentials, logger, state: entState };
+		const ctx = {
+			environment,
+			credentials,
+			logger,
+			state: entState,
+			exec: createExec(credentialsEnv(credentials)),
+		};
 		const remote = await entity.read(ctx);
 		entities.push({
 			name: entity.name,
@@ -267,7 +286,13 @@ export async function checkout(
 		const credentials = resolveEntityCredentials(infra, entity, environment);
 		entity.bindOutputs(outputs);
 		const entState = state.entities[entity.name] ?? null;
-		const ctx = { environment, credentials, logger, state: entState };
+		const ctx = {
+			environment,
+			credentials,
+			logger,
+			state: entState,
+			exec: createExec(credentialsEnv(credentials)),
+		};
 		await runHook(
 			entity.hooks?.beforeCheckout,
 			{ environment },
@@ -341,7 +366,13 @@ export async function destroy(
 		const credentials = resolveEntityCredentials(infra, entity, environment);
 		entity.bindOutputs(outputs);
 		const entState = state.entities[entity.name] ?? null;
-		const ctx = { environment, credentials, logger, state: entState };
+		const ctx = {
+			environment,
+			credentials,
+			logger,
+			state: entState,
+			exec: createExec(credentialsEnv(credentials)),
+		};
 		await runHook(
 			entity.hooks?.beforeDestroy,
 			{ environment },

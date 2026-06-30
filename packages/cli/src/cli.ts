@@ -15,6 +15,7 @@ import {
 	checkout,
 	collectAccounts,
 	destroy,
+	ensureTools,
 	link,
 	loadConfig,
 	type LoadedConfig,
@@ -156,6 +157,25 @@ async function cmdLogin(providers: string[]): Promise<void> {
 				? chalk.green("✓")
 				: chalk.red("✖");
 		info(`${mark} ${r.provider} (${r.accounts.join(", ")}) — ${r.status}`);
+	}
+
+	const tools = await ensureTools(loaded.infra, {
+		logger: consoleLogger,
+		confirm: (tool) =>
+			confirm(
+				chalk.yellow(
+					`Install the ${tool.id} CLI globally? (${(tool.install ?? []).join(" ")}) (y/N) `,
+				),
+			),
+	});
+	for (const t of tools) {
+		if (t.status === "missing" || t.status === "declined") {
+			info(
+				chalk.yellow(`• ${t.id} CLI: ${t.status} (runs via npx if available)`),
+			);
+		} else if (t.status === "installed") {
+			info(chalk.green(`✓ ${t.id} CLI installed`));
+		}
 	}
 }
 

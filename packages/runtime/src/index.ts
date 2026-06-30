@@ -34,13 +34,17 @@ export { resolveEntityCredentials } from "./lib/credentials.js";
 export {
 	accountCredentials,
 	collectAccounts,
+	ensureTools,
 	link,
 	login,
+	type EnsureToolsOptions,
 	type LinkOptions,
 	type LinkResult,
 	type LoginOptions,
 	type LoginResult,
+	type ToolStatus,
 } from "./lib/accounts.js";
+export { createExec, credentialsEnv } from "./lib/exec.js";
 export { runHook, type RunHookOptions } from "./lib/hooks-runner.js";
 export { envFileFor, toEntries, writeEnvFile } from "./lib/dotenv.js";
 export {

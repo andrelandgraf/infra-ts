@@ -47,7 +47,10 @@ export default defineConfig({
 			{
 				header: "Project",
 				items: [
-					{ href: "https://github.com/andrelandgraf/infra-ts", label: "GitHub" },
+					{
+						href: "https://github.com/andrelandgraf/infra-ts",
+						label: "GitHub",
+					},
 					{ href: "https://www.npmjs.com/package/infra-ts", label: "npm" },
 				],
 			},

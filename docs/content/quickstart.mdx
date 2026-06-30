@@ -15,6 +15,7 @@ sidebar:
     # or run ad hoc
     npx infra-ts --help
     ```
+
   </Step>
   <Step title="Create infra.ts">
     Declare resources as typed entity instances. An `Account` holds the org/team scope you provision into; entities reference it (and each other) through refs, so wiring creates dependency edges automatically.
@@ -40,6 +41,7 @@ sidebar:
       ],
     });
     ```
+
   </Step>
   <Step title="Authenticate and link accounts">
     `login` runs each provider's OAuth flow through the CLIs you already use (`neonctl`, `vercel`). `link` then lets you pick the org/team for each account and records it in `.infra.<env>`.
@@ -55,6 +57,7 @@ sidebar:
     export NEON_API_KEY=...
     export VERCEL_TOKEN=...
     ```
+
   </Step>
   <Step title="Preview and apply">
     `plan` reads live remote state and shows changes without mutating anything.
@@ -64,6 +67,7 @@ sidebar:
     npx infra-ts apply
     npx infra-ts status
     ```
+
   </Step>
 </Steps>
 

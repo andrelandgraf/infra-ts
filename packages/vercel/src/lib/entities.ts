@@ -1,9 +1,12 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
 	Account,
 	type AccountOptions,
 	type AccountScope,
 	type Change,
 	type CliAuth,
+	type CliTool,
 	Entity,
 	type EntityCommon,
 	ErrorCode,
@@ -15,9 +18,11 @@ import {
 	type StandardSchemaV1,
 } from "@infra-ts/core";
 import { z } from "zod";
+import { collectFiles, contentHash } from "./deploy.js";
 import {
 	VercelApi,
 	type VercelAccessGroupSnapshot,
+	type VercelDeploymentSnapshot,
 	type VercelDnsRecordSnapshot,
 	type VercelEnvTarget,
 	type VercelLogDrainSnapshot,
@@ -783,4 +788,247 @@ export class VercelAccount extends Account<VercelCreds> {
 		const api = new VercelApi({ token: credentials.VERCEL_TOKEN, apiHost });
 		return api.listTeams();
 	}
+}
+
+// ─── Deployment (command-backed: vercel CLI by default, REST fallback) ────────
+
+type DeploymentEnv = { deploymentUrl: string };
+type DeploymentState = { id: string; url: string; hash: string };
+export interface VercelDeploymentOptions extends EntityCommon<
+	DeploymentEnv,
+	DeploymentState
+> {
+	team?: string | Ref<string>;
+	/** The Vercel project id (or `project.id` ref) this deployment belongs to. */
+	project: string | Ref<string>;
+	/** Source directory to deploy (relative to where you run infra-ts). Default ".". */
+	cwd?: string;
+	/** `"cli"` (default) delegates to the vercel CLI; `"rest"` uploads source via the REST API. */
+	mode?: "cli" | "rest";
+	/** CLI mode: run `vercel build` locally and deploy `--prebuilt` (else Vercel builds remotely). */
+	prebuilt?: boolean;
+	/** Force the production target (else derived from the active environment). */
+	production?: boolean;
+	/** Pinned CLI package spec for `npx` (default `"vercel@latest"`). */
+	cliVersion?: string;
+	/** Extra path-segment names to skip when hashing/uploading source. */
+	ignore?: string[];
+}
+
+const DEFAULT_CLI = "vercel@latest";
+
+export class VercelDeployment extends VercelEntity<
+	VercelDeploymentOptions,
+	DeploymentEnv,
+	DeploymentState,
+	VercelDeploymentSnapshot
+> {
+	readonly envSchema = z.object({
+		deploymentUrl: z.string(),
+	}) as unknown as StandardSchemaV1<unknown, DeploymentEnv>;
+	readonly stateSchema = z.object({
+		id: z.string(),
+		url: z.string(),
+		hash: z.string(),
+	}) as unknown as StandardSchemaV1<unknown, DeploymentState>;
+	readonly envKeys = ["deploymentUrl"] as const;
+
+	private get deployMode(): "cli" | "rest" {
+		return this.config.mode ?? "cli";
+	}
+	private get sourceDir(): string {
+		return resolve(this.config.cwd ?? ".");
+	}
+	private get cliVersion(): string {
+		return this.config.cliVersion ?? DEFAULT_CLI;
+	}
+	private get projectId(): string {
+		return this.config.project;
+	}
+	private teamId(): string | undefined {
+		const t = this.config.team;
+		return t && t.startsWith("team_") ? t : undefined;
+	}
+	private target(environment: string): "production" | "preview" {
+		return this.config.production || environment === "production"
+			? "production"
+			: "preview";
+	}
+
+	override requiredTools(): CliTool[] {
+		if (this.deployMode !== "cli") return [];
+		const spec = this.cliVersion;
+		return [
+			{
+				id: "vercel",
+				detect: ["vercel", "--version"],
+				npx: spec,
+				install: ["npm", "i", "-g", spec],
+			},
+		];
+	}
+
+	async read(
+		ctx: ReadContext<VercelCreds, DeploymentState>,
+	): Promise<VercelDeploymentSnapshot | null> {
+		if (!ctx.state?.id) return null;
+		const api = await this.api(ctx);
+		return api.getDeployment(ctx.state.id);
+	}
+	diff(remote: VercelDeploymentSnapshot | null): Change[] {
+		// Content drift is decided at provision (it needs to read the source tree); plan shows the
+		// create when nothing is deployed yet.
+		return remote
+			? []
+			: [{ action: "create", kind: "deployment", identifier: this.name }];
+	}
+	async provision(
+		ctx: ProvisionContext<VercelCreds, DeploymentState>,
+	): Promise<ProvisionResult<DeploymentEnv, DeploymentState>> {
+		const files = collectFiles(this.sourceDir, this.config.ignore ?? []);
+		const hash = contentHash(files);
+		const target = this.target(ctx.environment);
+
+		if (ctx.state?.hash === hash && ctx.state.id) {
+			const api = await this.api(ctx);
+			const remote = await api.getDeployment(ctx.state.id);
+			if (remote && (remote.readyState ?? "READY") === "READY") {
+				return {
+					action: "noop",
+					id: ctx.state.id,
+					state: ctx.state,
+					env: { deploymentUrl: ctx.state.url },
+				};
+			}
+		}
+
+		const deployed =
+			this.deployMode === "cli"
+				? await this.deployViaCli(ctx, target)
+				: await this.deployViaRest(ctx, files, target);
+		return {
+			action: "create",
+			id: deployed.id,
+			state: { id: deployed.id, url: deployed.url, hash },
+			env: { deploymentUrl: deployed.url },
+		};
+	}
+	async pullEnv(
+		ctx: ReadContext<VercelCreds, DeploymentState>,
+	): Promise<DeploymentEnv> {
+		if (!ctx.state?.url) {
+			throw new InfraError(
+				ErrorCode.NotFound,
+				`vercel: deployment ${this.name} is not provisioned yet — run \`infra apply\` first.`,
+			);
+		}
+		return { deploymentUrl: ctx.state.url };
+	}
+	async deprovision(): Promise<void> {
+		// Deployments are immutable history backing the live alias — never auto-deleted.
+	}
+
+	private async deployViaCli(
+		ctx: ProvisionContext<VercelCreds, DeploymentState>,
+		target: "production" | "preview",
+	): Promise<{ id: string; url: string }> {
+		const exec = ctx.exec;
+		if (!exec) {
+			throw new InfraError(
+				ErrorCode.RequestFailed,
+				`vercel: deployment "${this.name}" (mode: cli) needs the exec capability — run via the infra-ts CLI/engine.`,
+			);
+		}
+		const env: Record<string, string> = { VERCEL_PROJECT_ID: this.projectId };
+		const team = this.teamId();
+		if (team) env.VERCEL_ORG_ID = team;
+		const cwd = this.sourceDir;
+		const base = ["npx", "-y", this.cliVersion];
+		const prod = target === "production";
+
+		await exec([...base, "pull", "--yes", `--environment=${target}`], {
+			cwd,
+			env,
+		});
+		const deployArgs = ["deploy", "--yes"];
+		if (this.config.prebuilt) {
+			await exec([...base, "build", ...(prod ? ["--prod"] : [])], { cwd, env });
+			deployArgs.push("--prebuilt");
+		}
+		if (prod) deployArgs.push("--prod");
+		const res = await exec([...base, ...deployArgs], { cwd, env });
+		const url = lastLine(res.stdout);
+		if (!url) {
+			throw new InfraError(
+				ErrorCode.RequestFailed,
+				`vercel: deploy for "${this.name}" did not return a URL.`,
+			);
+		}
+		return { id: stripProtocol(url), url: ensureProtocol(url) };
+	}
+
+	private async deployViaRest(
+		ctx: ProvisionContext<VercelCreds, DeploymentState>,
+		files: ReturnType<typeof collectFiles>,
+		target: "production" | "preview",
+	): Promise<{ id: string; url: string }> {
+		const api = await this.api(ctx);
+		const seen = new Set<string>();
+		for (const file of files) {
+			if (seen.has(file.sha1)) continue;
+			seen.add(file.sha1);
+			await api.uploadFile(
+				file.sha1,
+				new Uint8Array(readFileSync(file.abspath)),
+			);
+		}
+		const created = await api.createDeployment({
+			name: this.name,
+			project: this.projectId,
+			target,
+			files: files.map((f) => ({ file: f.relpath, sha: f.sha1, size: f.size })),
+		});
+		const ready = await this.poll(api, created.id);
+		return { id: ready.id, url: ensureProtocol(ready.url) };
+	}
+
+	private async poll(
+		api: VercelApi,
+		id: string,
+		timeoutMs = 300_000,
+	): Promise<VercelDeploymentSnapshot> {
+		const deadline = Date.now() + timeoutMs;
+		while (Date.now() < deadline) {
+			const dep = await api.getDeployment(id);
+			const state = dep?.readyState ?? "READY";
+			if (dep && state === "READY") return dep;
+			if (state === "ERROR" || state === "CANCELED") {
+				throw new InfraError(
+					ErrorCode.RequestFailed,
+					`vercel: deployment ${id} finished in state ${state}.`,
+					{ details: { id, state } },
+				);
+			}
+			await new Promise((r) => setTimeout(r, 2000));
+		}
+		throw new InfraError(
+			ErrorCode.RequestFailed,
+			`vercel: deployment ${id} did not reach READY within ${Math.round(timeoutMs / 1000)}s.`,
+		);
+	}
+}
+
+function lastLine(stdout: string): string | undefined {
+	const lines = stdout
+		.trim()
+		.split("\n")
+		.map((l) => l.trim())
+		.filter(Boolean);
+	return lines[lines.length - 1];
+}
+function stripProtocol(url: string): string {
+	return url.replace(/^https?:\/\//, "");
+}
+function ensureProtocol(url: string): string {
+	return /^https?:\/\//.test(url) ? url : `https://${url}`;
 }

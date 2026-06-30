@@ -11,7 +11,7 @@ import {
 	NeonProject,
 	NeonReadReplica,
 } from "infra-ts/neon";
-import { VercelProject } from "infra-ts/vercel";
+import { VercelDeployment, VercelProject } from "infra-ts/vercel";
 import { UpstashRedis, UpstashVector } from "infra-ts/upstash";
 import { ResendApiKey } from "infra-ts/resend";
 import { MuxSigningKey } from "infra-ts/mux";
@@ -56,6 +56,13 @@ const web = new VercelProject({
 		AUTH_JWKS_URL: auth.env.authJwksUrl,
 	},
 });
+const deployment = new VercelDeployment({
+	name: "web-deploy",
+	project: web.id,
+	cwd: "./apps/web",
+	production: true,
+});
+const deploymentUrl: Ref<string> = deployment.env.deploymentUrl;
 
 const redis = new UpstashRedis({ name: "cache" });
 const vector = new UpstashVector({ name: "vec", dimensionCount: 1536 });
@@ -116,6 +123,7 @@ const infra = defineInfra({
 		db,
 		auth,
 		replica,
+		deployment,
 		web,
 		redis,
 		vector,
@@ -154,6 +162,7 @@ export {
 	dbUrl,
 	jwks,
 	replicaUrl,
+	deploymentUrl,
 	web,
 	redisUrl,
 	vectorUrl,
