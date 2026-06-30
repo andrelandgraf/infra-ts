@@ -1,0 +1,90 @@
+---
+title: Core concepts
+description: The model behind entities, refs, environments, identity state, and live reconciliation.
+sidebar:
+  label: Concepts
+  order: 2
+---
+
+## Entities
+
+An entity is one provisionable resource. A Neon project, Postgres database, Vercel project, Stripe product, or OpenAI key can each be modeled as a class instance.
+
+Entities expose:
+
+- a stable `name`, chosen by you
+- typed constructor options
+- typed output refs such as `entity.id` and `entity.env.databaseUrl`
+- lifecycle methods for `read`, `diff`, `provision`, and `deprovision`
+
+## Refs
+
+Refs are deferred values from another entity. Passing a ref into a constructor does two things:
+
+1. creates a dependency edge in the graph
+2. resolves to the live value when `apply` runs
+
+```ts
+const db = new NeonPostgres({ name: "db", projectId: project.id });
+
+new VercelProject({
+	name: "web",
+	env: {
+		DATABASE_URL: db.env.databaseUrl,
+	},
+});
+```
+
+## Identity state
+
+infra-ts does not store resource attributes. It stores only the binding needed to remember which remote resource belongs to which entity.
+
+```json
+{
+	"version": 1,
+	"environment": "local",
+	"entities": {
+		"db": { "id": "br-wandering-frost-12345678" }
+	}
+}
+```
+
+That file is deliberately small:
+
+- no resource attributes
+- no secrets
+- no drift-prone snapshot
+- no lock server
+
+## Live reconciliation
+
+Every command re-reads provider APIs:
+
+```txt
+infra.ts declaration
+        +
+.infra.<env> identity bindings
+        +
+live provider API reads
+        =
+plan / apply / status / checkout
+```
+
+If the remote drifted, infra-ts sees that drift from the provider API directly. If a resource was renamed or recreated, the identity binding tells infra-ts which resource to compare.
+
+## Environments
+
+Every command targets an environment:
+
+```bash
+npx infra-ts plan --env preview
+npx infra-ts apply --env production
+```
+
+The environment selects:
+
+- `.infra.<env>` identity bindings
+- `.env.<env>` output file
+- environment-specific credentials or defaults
+
+infra-ts does not use `NODE_ENV` for this selection.

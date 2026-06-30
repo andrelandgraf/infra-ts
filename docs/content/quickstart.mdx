@@ -1,0 +1,89 @@
+---
+title: Quickstart
+description: Install infra-ts, create an infra.ts file, and preview the live reconciliation plan.
+sidebar:
+  label: Quickstart
+  order: 1
+---
+
+<Steps>
+  <Step title="Install or run the CLI">
+    Use the published package directly.
+
+    ```bash
+    npm i -D infra-ts
+    # or run ad hoc
+    npx infra-ts --help
+    ```
+  </Step>
+  <Step title="Create infra.ts">
+    Declare resources as typed entity instances. Entity outputs are refs, so cross-provider wiring creates dependency edges automatically.
+
+    ```ts
+    import { defineInfra } from "infra-ts";
+    import { NeonPostgres, NeonProject } from "infra-ts/neon";
+    import { VercelProject } from "infra-ts/vercel";
+
+    const project = new NeonProject({ name: "web", region: "aws-us-east-1" });
+    const db = new NeonPostgres({ name: "db", projectId: project.id });
+
+    export default defineInfra({
+      entities: [
+        project,
+        db,
+        new VercelProject({
+          name: "web",
+          env: { DATABASE_URL: db.env.databaseUrl },
+        }),
+      ],
+    });
+    ```
+  </Step>
+  <Step title="Authenticate providers">
+    Provider packages read credentials from the environment or the CLIs you already use.
+
+    ```bash
+    export NEON_API_KEY=...
+    export VERCEL_TOKEN=...
+    ```
+  </Step>
+  <Step title="Preview and apply">
+    `plan` reads live remote state and shows changes without mutating anything.
+
+    ```bash
+    npx infra-ts plan
+    npx infra-ts apply
+    npx infra-ts status
+    ```
+  </Step>
+</Steps>
+
+:::tip
+The first `apply` writes `.infra.<env>`, a tiny identity link file. Keep it local and uncommitted, just like `.env.local` or `.vercel`.
+:::
+
+## Pull typed environment values
+
+Entities can expose typed environment outputs. `checkout` pulls those values from live resources and writes `.env.<env>`.
+
+```bash
+npx infra-ts checkout --env local
+```
+
+In application code, `parseEnv` validates the process environment without network access:
+
+```ts
+import infra from "./infra";
+import { parseEnv } from "infra-ts";
+
+const env = parseEnv(infra);
+env["db"].databaseUrl;
+```
+
+## Run with resolved env
+
+`infra-ts run` checks out env values in memory and runs a child command with those variables injected.
+
+```bash
+npx infra-ts run -- npm run dev
+```

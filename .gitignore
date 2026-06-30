@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.blume/
 *.tsbuildinfo
 .DS_Store
 

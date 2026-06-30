@@ -1,0 +1,56 @@
+---
+title: CLI
+description: Commands for planning, applying, checking out env, and running app commands.
+sidebar:
+  label: CLI
+  order: 4
+---
+
+The CLI and SDK share the same engine functions. Commands are thin wrappers around the runtime.
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `infra-ts init` | Scaffold an `infra.ts` file. |
+| `infra-ts login` | Authenticate provider accounts when supported. |
+| `infra-ts link` | Bind account scopes such as orgs or teams into `.infra.<env>`. |
+| `infra-ts plan` | Read live state and preview changes. |
+| `infra-ts apply` | Reconcile live resources to match `infra.ts`. |
+| `infra-ts status` | Show live existence and pending drift. |
+| `infra-ts checkout` | Pull typed env outputs into `.env.<env>`. |
+| `infra-ts destroy` | Tear down all resources bound to the current environment. |
+| `infra-ts run -- <cmd>` | Run a child process with resolved env injected. |
+
+## Global flags
+
+```bash
+infra-ts plan --env preview
+infra-ts apply --only web db
+infra-ts status --json
+infra-ts --cwd ./apps/web plan
+```
+
+## Safe defaults
+
+`plan` is read-only. `destroy` prompts unless `--yes` is passed. `checkout` guards against drift unless you opt into ignoring it.
+
+```bash
+infra-ts checkout --ignore-diff
+infra-ts destroy --env preview --yes
+```
+
+## SDK shape
+
+Everything the CLI does is also available through the runtime SDK:
+
+```ts
+import { apply, loadConfig, plan } from "infra-ts";
+
+const loaded = await loadConfig({ cwd: process.cwd() });
+const report = await plan(loaded.infra, { rootDir: loaded.rootDir });
+
+if (report.changes.length > 0) {
+	await apply(loaded.infra, { rootDir: loaded.rootDir });
+}
+```

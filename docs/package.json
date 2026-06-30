@@ -1,0 +1,22 @@
+{
+	"name": "infra-ts-docs",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "blume build",
+		"dev": "blume dev",
+		"preview": "blume preview"
+	},
+	"dependencies": {
+		"@astrojs/mdx": "7.0.0",
+		"@orama/orama": "^3.1.18",
+		"@shikijs/twoslash": "^4.2.0",
+		"@tailwindcss/vite": "^4.1.18",
+		"astro": "7.0.3",
+		"blume": "^0.1.0"
+	},
+	"engines": {
+		"node": ">=22.12.0"
+	}
+}

@@ -1,0 +1,55 @@
+---
+title: Providers
+description: Provider packages are thin REST wrappers that implement the infra-ts entity contract.
+sidebar:
+  label: Providers
+  order: 3
+---
+
+The umbrella `infra-ts` package includes the first provider set as subpath imports. Each provider is a thin wrapper over the provider's REST API, not a separate engine.
+
+<CardGroup cols={2}>
+  <Card title="Neon" icon="database">
+    Projects, branches, compute, Postgres, auth, and replicas.
+  </Card>
+  <Card title="Vercel" icon="cloud">
+    Projects and environment variables wired from other entities.
+  </Card>
+  <Card title="Upstash" icon="server">
+    Redis, Vector, and QStash-style infrastructure.
+  </Card>
+  <Card title="SaaS providers" icon="plug">
+    Resend, Mux, Sentry, WorkOS, Sanity, Statsig, Dub, Stripe, PostHog, ElevenLabs, and OpenAI.
+  </Card>
+</CardGroup>
+
+## Imports
+
+```ts
+import { NeonProject } from "infra-ts/neon";
+import { VercelProject } from "infra-ts/vercel";
+import { StripeProduct } from "infra-ts/stripe";
+import { OpenAIProject } from "infra-ts/openai";
+```
+
+## Provider contract
+
+Provider authors implement entities with a small lifecycle:
+
+- `read` fetches live remote state
+- `diff` compares desired config with live remote state
+- `provision` creates or updates the resource
+- `pullEnv` exposes typed environment outputs
+- `deprovision` tears down the resource
+
+The engine handles graph ordering, refs, state-file I/O, env output, hooks, and CLI rendering.
+
+## Design rule
+
+Providers should stay thin. Shelling out to vendor CLIs, storing hidden snapshots, or bundling unrelated provider logic into a single resource makes the graph harder to reason about.
+
+The happy path is boring:
+
+```txt
+typed options -> REST API read -> pure diff -> REST API mutation
+```

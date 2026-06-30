@@ -1,0 +1,59 @@
+---
+title: The standard
+description: infra-ts is an open entity model for typed, live-reconciled infrastructure.
+sidebar:
+  label: Standard
+  order: 5
+---
+
+infra-ts is both a CLI package and an open standard for provider packages.
+
+The standard is intentionally small: an entity declares typed credentials, typed env outputs, typed persisted identity state, and lifecycle methods that operate against live remote APIs.
+
+## Principles
+
+- **No attribute state.** The engine never persists resource attributes.
+- **Live remote is truth.** Providers read the API on every plan and apply.
+- **Typed boundaries.** Options, credentials, env outputs, and state all have types.
+- **Fine-grained resources.** Model one resource per entity, not one provider blob.
+- **Pure constructors.** Entity constructors store config; they do no I/O.
+
+## Entity lifecycle
+
+```ts
+abstract class Entity<Credentials, Env, State, Remote> {
+	readonly name: string;
+	read(ctx): Promise<Remote | null>;
+	diff(ctx, remote): Change[];
+	provision(ctx, remote): Promise<{ state: State; env: Env }>;
+	pullEnv(ctx, remote): Promise<Env>;
+	deprovision(ctx, remote): Promise<void>;
+}
+```
+
+The runtime supplies graph order, resolved refs, environment selection, state file I/O, credential loading, and output rendering.
+
+## State invariant
+
+Persisted state may contain stable ids and content hashes. It must not contain:
+
+- secrets
+- provider attributes
+- copied env values
+- cached remote payloads
+
+That invariant keeps infra-ts easy to reason about and easy for agents to inspect.
+
+## Future direction
+
+The provider ecosystem should grow as packages:
+
+```txt
+@infra-ts/neon
+@infra-ts/vercel
+@infra-ts/stripe
+@infra-ts/openai
+@infra-ts/<your-provider>
+```
+
+The umbrella `infra-ts` package can bundle a practical default set, while specialized providers can live independently.

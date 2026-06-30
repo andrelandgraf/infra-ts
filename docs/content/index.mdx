@@ -1,0 +1,81 @@
+---
+title: Introduction
+description: infra-ts is typed, live-reconciled infrastructure and config as code for TypeScript.
+sidebar:
+  label: Introduction
+  order: 0
+---
+
+infra-ts lets you declare infrastructure as typed entities in a single `infra.ts` file, then reconcile that declaration against live provider APIs.
+
+There is no attribute-state backend. infra-ts persists only a small per-environment identity link file, re-reads the live remote on every command, and treats provider APIs as the source of truth.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" href="/quickstart" icon="rocket">
+    Install the CLI, write an `infra.ts`, and run your first plan.
+  </Card>
+  <Card title="Core concepts" href="/concepts" icon="blocks">
+    Learn entities, refs, identity state, typed env, and live reconciliation.
+  </Card>
+  <Card title="Providers" href="/providers" icon="plug">
+    Use Neon, Vercel, Upstash, Resend, Mux, Stripe, OpenAI, and more.
+  </Card>
+  <Card title="The standard" href="/standard" icon="file-text">
+    Understand the small entity contract behind the ecosystem.
+  </Card>
+</CardGroup>
+
+## Why it exists
+
+Infrastructure-as-code is most valuable when it is repeatable, inspectable, and safe to automate. Traditional state engines solve identity and drift by storing a full attribute snapshot outside the live system. That snapshot becomes another database to lock, protect, migrate, and debug.
+
+infra-ts takes the opposite bet:
+
+- **Identity state only.** `.infra.<env>` maps entity names to provider ids. It never stores resource attributes or secrets.
+- **Live reconciliation.** `plan`, `apply`, `status`, and `checkout` read current remote state through REST APIs before deciding what changed.
+- **TypeScript-native config.** Providers expose typed classes, refs, and environment outputs your editor and CI can check.
+- **Open provider model.** A provider is a thin package that implements one small entity contract. It does not need a custom engine.
+
+## A minimal `infra.ts`
+
+```ts
+import { defineInfra } from "infra-ts";
+import { NeonPostgres, NeonProject } from "infra-ts/neon";
+import { VercelProject } from "infra-ts/vercel";
+
+const project = new NeonProject({ name: "my-app", region: "aws-us-east-1" });
+const db = new NeonPostgres({ name: "my-db", projectId: project.id });
+
+export default defineInfra({
+	entities: [
+		project,
+		db,
+		new VercelProject({
+			name: "my-app",
+			framework: "nextjs",
+			env: {
+				DATABASE_URL: db.env.databaseUrl,
+			},
+		}),
+	],
+});
+```
+
+```bash
+npx infra-ts plan
+npx infra-ts apply
+npx infra-ts status
+```
+
+## What ships today
+
+The `infra-ts` npm package is the batteries-included CLI and SDK. It bundles the core runtime and first provider set as subpath imports:
+
+```ts
+import { defineInfra, parseEnv } from "infra-ts";
+import { NeonProject } from "infra-ts/neon";
+import { VercelProject } from "infra-ts/vercel";
+import { StripeProduct } from "infra-ts/stripe";
+```
+
+The project is early, but the direction is intentionally simple: typed entities, live REST reconciliation, no attribute state.
