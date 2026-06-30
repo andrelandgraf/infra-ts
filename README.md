@@ -315,7 +315,7 @@ All commands accept these global options:
 | -------------------------------- | -------------------------------------------------------------------------------------- |
 | `infra init`                     | Scaffold an `infra.ts` in the current directory.                                       |
 | `infra login [providers...]`     | Authenticate each account's provider (CLI OAuth passthrough).                          |
-| `infra link [accounts...]`       | Pick an org/team per account; write the scope to `.infra.<env>`.                       |
+| `infra link [scopes...]`         | Pick an org/team per scope entity; write the scope to `.infra.<env>`.                  |
 | `infra plan`                     | Show the changes `apply` would make (dry run; no mutations, no state writes).          |
 | `infra apply [--prune]`          | Reconcile remote to `infra.ts`, persist `.infra.<env>`, write `.env.<env>`, run hooks. |
 | `infra status`                   | Print the live state of every entity (exists + pending drift).                         |

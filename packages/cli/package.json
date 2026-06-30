@@ -16,8 +16,8 @@
 	"author": "Andre Landgraf <andre@neon.tech>",
 	"type": "module",
 	"bin": {
-		"infra-ts": "./dist/cli.js",
-		"infra": "./dist/cli.js"
+		"infra-ts": "dist/cli.js",
+		"infra": "dist/cli.js"
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",

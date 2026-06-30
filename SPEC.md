@@ -529,9 +529,9 @@ A scope entity:
   REST), you pick one, and the id is written to `.infra.<env>` under the account name. `apply`
   reads it; the scope's `provision` **creates no remote resource** — it just verifies a scope is
   bound (else errors _“run `infra-ts link <name>`”_) and never deletes the org on `destroy`.
-- **Anchors auth.** `infra-ts login` authenticates the account's provider (CLI OAuth passthrough
-  for Neon/Vercel; see §8.1 fallback). Credentials resolve per account: explicit option → creds
-  store keyed by account name → provider env var → CLI cache.
+- **Anchors auth.** `infra-ts login` authenticates the scope entity's provider (CLI OAuth passthrough
+  for Neon/Vercel; see §8.1 fallback). Credentials resolve per scope entity: explicit option →
+  creds store keyed by scope name → provider env var → CLI cache.
 
 **Multi-scope credentials.** The common case is _one login, many orgs_ — entities share the cached
 token and differ only by `scope.id`, which works out of the box.
@@ -912,7 +912,7 @@ Everything is also an SDK function (`import { apply, plan, … } from "infra-ts"
 | Command                                    | Description                                                         |
 | ------------------------------------------ | ------------------------------------------------------------------- |
 | `infra login [provider…]`                  | Authenticate each account's provider (CLI OAuth passthrough). §8.3  |
-| `infra link [account…] [--env e]`          | Pick an org/team per account; write the scope to `.infra.<e>`. §8.3 |
+| `infra link [scope…] [--env e]`            | Pick an org/team per scope entity; write the scope to `.infra.<e>`. §8.3 |
 | `infra plan [--env e]`                     | Dry run: the changes `apply` would make. No mutations, no hooks.    |
 | `infra apply [--env e] [--prune]`          | Reconcile remote to `infra.ts`; write `.env.<e>`; run hooks.        |
 | `infra status [--env e]`                   | Live state of every entity. Read-only.                              |

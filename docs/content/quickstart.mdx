@@ -21,24 +21,27 @@ sidebar:
 
   </Step>
   <Step title="Create infra.ts">
-    Declare resources as typed entity instances. An `Account` holds the org/team scope you provision into; entities reference it (and each other) through refs, so wiring creates dependency edges automatically.
+    Declare resources as typed entity instances. Scope entities hold the org/team you provision into; resources reference them (and each other) through refs, so wiring creates dependency edges automatically.
 
     ```ts
     import { defineInfra } from "infra-ts";
-    import { NeonAccount, NeonPostgres, NeonProject } from "infra-ts/neon";
-    import { VercelProject } from "infra-ts/vercel";
+    import { NeonOrg, NeonPostgres, NeonProject } from "infra-ts/neon";
+    import { VercelProject, VercelTeam } from "infra-ts/vercel";
 
-    const neon = new NeonAccount({ name: "personal" });
-    const project = new NeonProject({ name: "web", region: "aws-us-east-1", org: neon.id });
+    const neon = new NeonOrg({ name: "neon" });
+    const vercel = new VercelTeam({ name: "vercel" });
+    const project = new NeonProject({ name: "web-neon", region: "aws-us-east-1", org: neon.id });
     const db = new NeonPostgres({ name: "db", projectId: project.id });
 
     export default defineInfra({
       entities: [
         neon,
+        vercel,
         project,
         db,
         new VercelProject({
-          name: "web",
+          name: "web-vercel",
+          team: vercel.id,
           env: { DATABASE_URL: db.env.databaseUrl },
         }),
       ],
@@ -46,12 +49,12 @@ sidebar:
     ```
 
   </Step>
-  <Step title="Authenticate and link accounts">
-    `login` runs each provider's OAuth flow through the CLIs you already use (`neonctl`, `vercel`). `link` then lets you pick the org/team for each account and records it in `.infra.<env>`.
+  <Step title="Authenticate and link scopes">
+    `login` runs each provider's OAuth flow through the CLIs you already use (`neonctl`, `vercel`). `link` then lets you pick the org/team for each scope entity and records it in `.infra.<env>`.
 
     ```bash
     infra login   # OAuth via the provider CLIs
-    infra link    # pick an org/team per account → .infra.<env>
+    infra link    # pick an org/team per scope → .infra.<env>
     ```
 
     Prefer explicit credentials in CI? Set them in the environment instead:

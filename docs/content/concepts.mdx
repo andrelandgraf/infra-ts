@@ -25,24 +25,26 @@ Refs are deferred values from another entity. Passing a ref into a constructor d
 2. resolves to the live value when `apply` runs
 
 ```ts
+const vercel = new VercelTeam({ name: "vercel" });
 const db = new NeonPostgres({ name: "db", projectId: project.id });
 
 new VercelProject({
 	name: "web",
+	team: vercel.id,
 	env: {
 		DATABASE_URL: db.env.databaseUrl,
 	},
 });
 ```
 
-## Accounts
+## Orgs/teams
 
-Before infra-ts can provision anything it needs two per-developer things that don't belong hardcoded in `infra.ts`: a token, and the org/team to provision into. Both are modeled by an `Account` — a named entity that creates no remote resource of its own.
+Before infra-ts can provision anything it needs two per-developer things that don't belong hardcoded in `infra.ts`: a token, and the org/team to provision into. Both are modeled by a provider-native scope entity such as `NeonOrg` or `VercelTeam` — a named entity that creates no remote resource of its own.
 
 ```ts
-import { NeonAccount, NeonProject } from "infra-ts/neon";
+import { NeonOrg, NeonProject } from "infra-ts/neon";
 
-const neon = new NeonAccount({ name: "personal" });
+const neon = new NeonOrg({ name: "neon" });
 const project = new NeonProject({
 	name: "web",
 	region: "aws-us-east-1",
@@ -50,11 +52,11 @@ const project = new NeonProject({
 });
 ```
 
-- `infra login` authenticates the account's provider (OAuth passthrough via `neonctl` / `vercel`).
+- `infra login` authenticates the scope entity's provider (OAuth passthrough via `neonctl` / `vercel`).
 - `infra link` lists your orgs/teams, you pick one, and the scope id is written to `.infra.<env>`.
-- Entities reference the scope with `org: account.id` (Neon) or `team: account.id` (Vercel). The account resolves first, so the scope is ready before anything provisions.
+- Entities reference the scope with `org: neon.id` (Neon) or `team: vercel.id` (Vercel). The scope entity resolves first, so the scope is ready before anything provisions.
 
-Two accounts of the same provider just get two names (`new NeonAccount({ name: "work" })`). The common case is one login with many orgs (shared token, scope differs per account).
+Two scopes of the same provider just get two names (`new NeonOrg({ name: "work" })`). The common case is one login with many orgs (shared token, scope differs per scope).
 
 When a provider's cached CLI token is a short-lived OAuth token (e.g. Neon's), infra-ts self-heals: on a `401` it refreshes the token via the CLI and retries once, so an idle session doesn't fail your command.
 

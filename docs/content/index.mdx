@@ -40,12 +40,13 @@ infra-ts takes the opposite bet:
 
 ```ts
 import { defineInfra } from "infra-ts";
-import { NeonAccount, NeonPostgres, NeonProject } from "infra-ts/neon";
-import { VercelProject } from "infra-ts/vercel";
+import { NeonOrg, NeonPostgres, NeonProject } from "infra-ts/neon";
+import { VercelProject, VercelTeam } from "infra-ts/vercel";
 
-const neon = new NeonAccount({ name: "personal" });
+const neon = new NeonOrg({ name: "neon" });
+const vercel = new VercelTeam({ name: "vercel" });
 const project = new NeonProject({
-	name: "my-app",
+	name: "my-app-neon",
 	region: "aws-us-east-1",
 	org: neon.id,
 });
@@ -54,10 +55,12 @@ const db = new NeonPostgres({ name: "my-db", projectId: project.id });
 export default defineInfra({
 	entities: [
 		neon,
+		vercel,
 		project,
 		db,
 		new VercelProject({
-			name: "my-app",
+			name: "my-app-vercel",
+			team: vercel.id,
 			framework: "nextjs",
 			env: {
 				DATABASE_URL: db.env.databaseUrl,
@@ -67,7 +70,7 @@ export default defineInfra({
 });
 ```
 
-An `Account` is the org/team you provision into; `infra login` authenticates it and `infra link` binds the scope. See [Core concepts](/concepts#accounts).
+A scope entity is the org/team you provision into; `infra login` authenticates the provider and `infra link` binds the scope. See [Core concepts](/concepts#orgsteams).
 
 ```bash
 infra plan

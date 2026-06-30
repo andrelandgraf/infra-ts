@@ -66,7 +66,7 @@ program
 	.action((providers: string[]) => withErrors(() => cmdLogin(providers)));
 program
 	.command("link")
-	.description("pick an org/team per account; write the scope to .infra.<env>")
+	.description("pick an org/team per scope entity; write the scope to .infra.<env>")
 	.argument("[accounts...]", "limit to these account names")
 	.action((accounts: string[]) => withErrors(() => cmdLink(accounts)));
 program
