@@ -10,7 +10,7 @@ import {
 	type ResolvedOutputs,
 } from "./ref.js";
 import type { StandardSchemaV1 } from "./standard-schema.js";
-import type { EnvKeyOverride } from "./env-keys.js";
+import { type EnvKeyOverride, osKeyFor } from "./env-keys.js";
 
 export type ChangeAction = "create" | "update" | "delete" | "noop";
 
@@ -52,23 +52,30 @@ export type Hook<Ctx> =
 	| string
 	| string[];
 
+/**
+ * Per-entity lifecycle hooks. Keys mirror the CLI commands (`apply`, `checkout`, `destroy`), each
+ * with a `before*`/`after*` phase. Declarative data — not imperatively registered. Hooks never run
+ * during `plan`/`status`.
+ */
 export interface EntityHooks<
 	Env extends Record<string, string>,
 	State extends Record<string, unknown>,
 > {
-	provision?: {
-		before?: Hook<{ environment: string }>;
-		after?: Hook<{
-			environment: string;
-			action: ChangeAction;
-			state: State;
-			env: Env;
-		}>;
-	};
-	checkout?: {
-		before?: Hook<{ environment: string }>;
-		after?: Hook<{ environment: string; env: Env }>;
-	};
+	/** Before this entity is provisioned during `infra apply`. */
+	beforeApply?: Hook<{ environment: string }>;
+	/** After provision + env resolution; receives the full provision result (typed env). */
+	afterApply?: Hook<{
+		environment: string;
+		action: ChangeAction;
+		state: State;
+		env: Env;
+	}>;
+	/** Around `infra checkout` (pulling typed env from the live remote). */
+	beforeCheckout?: Hook<{ environment: string }>;
+	afterCheckout?: Hook<{ environment: string; env: Env }>;
+	/** Around `infra destroy` (deprovision). */
+	beforeDestroy?: Hook<{ environment: string }>;
+	afterDestroy?: Hook<{ environment: string }>;
 }
 
 /** Common fields every entity's options object carries (alongside provider-specific config). */
@@ -78,8 +85,6 @@ export interface EntityCommon<
 > {
 	/** Stable, unique id (config-only, deterministic). */
 	name: string;
-	/** Explicit ordering deps with no data flow (most deps are inferred from refs). */
-	deps?: AnyEntity[];
 	/** Imperative side-effect hooks bracketing provision / checkout. */
 	hooks?: EntityHooks<Env, State>;
 	/** Rename specific env vars on disk (logical → OS key). Values pass through. */
@@ -126,9 +131,6 @@ export abstract class Entity<
 	get name(): string {
 		return this.options.name;
 	}
-	get deps(): AnyEntity[] {
-		return this.options.deps ?? [];
-	}
 	get hooks(): EntityHooks<Env, State> | undefined {
 		return this.options.hooks as EntityHooks<Env, State> | undefined;
 	}
@@ -139,11 +141,10 @@ export abstract class Entity<
 	/** Logical env field names — drives output refs, `.env` writing, and `parseEnv`. */
 	abstract readonly envKeys: readonly (keyof Env & string)[];
 
-	/** Entity ids this one depends on: refs found in options + explicit `deps`. */
+	/** Entity ids this one depends on, inferred from refs found in its options. */
 	dependencyIds(): string[] {
 		const ids = new Set<string>();
 		collectRefEntities(this.options, ids);
-		for (const dep of this.deps) ids.add(dep.name);
 		return [...ids];
 	}
 
@@ -176,6 +177,20 @@ export abstract class Entity<
 	/** Typed deferred references to this entity's env, e.g. `db.env.databaseUrl`. */
 	get env(): EnvRefs<Env> {
 		return envRefs<Env>(this.name, this.envKeys);
+	}
+
+	/**
+	 * This entity's whole env as an **OS-keyed** bundle of refs (applies `envNames`/`envName`),
+	 * ready to spread into a consumer's `env`: `{ ...db.toEnv() }` → `{ DATABASE_URL: Ref, … }`.
+	 * The values are refs, so spreading also creates the dependency edge.
+	 */
+	toEnv(): Record<string, Ref<string>> {
+		const refs = this.env;
+		const out: Record<string, Ref<string>> = {};
+		for (const key of this.envKeys) {
+			out[osKeyFor(key, this.envKeyOverride)] = refs[key];
+		}
+		return out;
 	}
 
 	/**

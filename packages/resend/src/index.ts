@@ -8,7 +8,9 @@ export {
 	ResendApiKey,
 	ResendAudience,
 	ResendDomain,
+	ResendWebhook,
 	type ResendApiKeyOptions,
 	type ResendAudienceOptions,
 	type ResendDomainOptions,
+	type ResendWebhookOptions,
 } from "./lib/entities.js";

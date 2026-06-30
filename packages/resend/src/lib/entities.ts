@@ -8,6 +8,7 @@ import {
 	type ProvisionContext,
 	type ProvisionResult,
 	type ReadContext,
+	type Ref,
 	type RestClient,
 	type StandardSchemaV1,
 } from "@infra-ts/core";
@@ -280,6 +281,84 @@ export class ResendAudience extends ResendEntity<
 	): Promise<void> {
 		if (!ctx.state?.id) return;
 		await this.rest(ctx).delete(`/audiences/${ctx.state.id}`, {
+			allowStatuses: [404],
+		});
+	}
+}
+
+// ─── Webhook ──────────────────────────────────────────────────────────────────
+
+interface RawWebhook {
+	id: string;
+}
+export interface ResendWebhookOptions extends EntityCommon<
+	Record<string, never>,
+	{ id: string }
+> {
+	endpointUrl: string | Ref<string>;
+	events: string[];
+}
+
+export class ResendWebhook extends ResendEntity<
+	ResendWebhookOptions,
+	Record<string, never>,
+	{ id: string },
+	RawWebhook
+> {
+	readonly envSchema = z.object({}) as unknown as StandardSchemaV1<
+		unknown,
+		Record<string, never>
+	>;
+	readonly stateSchema = z.object({
+		id: z.string(),
+	}) as unknown as StandardSchemaV1<unknown, { id: string }>;
+	readonly envKeys = [] as const;
+
+	async read(
+		ctx: ReadContext<ResendCreds, { id: string }>,
+	): Promise<RawWebhook | null> {
+		if (!ctx.state?.id) return null;
+		return this.rest(ctx).get<RawWebhook | null>(`/webhooks/${ctx.state.id}`, {
+			allowStatuses: [404],
+		});
+	}
+	diff(remote: RawWebhook | null): Change[] {
+		return remote
+			? []
+			: [{ action: "create", kind: "webhook", identifier: this.name }];
+	}
+	async provision(
+		ctx: ProvisionContext<ResendCreds, { id: string }>,
+	): Promise<ProvisionResult<Record<string, never>, { id: string }>> {
+		const existing = ctx.state?.id
+			? await this.rest(ctx).get<RawWebhook | null>(
+					`/webhooks/${ctx.state.id}`,
+					{ allowStatuses: [404] },
+				)
+			: null;
+		const hook =
+			existing ??
+			(await this.rest(ctx).post<RawWebhook>("/webhooks", {
+				body: {
+					endpoint_url: this.config.endpointUrl,
+					events: this.config.events,
+				},
+			}));
+		return {
+			action: existing ? "noop" : "create",
+			id: hook.id,
+			state: { id: hook.id },
+			env: {},
+		};
+	}
+	async pullEnv(): Promise<Record<string, never>> {
+		return {};
+	}
+	async deprovision(
+		ctx: ProvisionContext<ResendCreds, { id: string }>,
+	): Promise<void> {
+		if (!ctx.state?.id) return;
+		await this.rest(ctx).delete(`/webhooks/${ctx.state.id}`, {
 			allowStatuses: [404],
 		});
 	}

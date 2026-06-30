@@ -1,0 +1,49 @@
+{
+	"name": "@infra-ts/stripe",
+	"version": "0.1.0",
+	"description": "infra-ts provider for Stripe — webhook endpoints, products, and prices as typed, live-reconciled config-as-code.",
+	"keywords": [
+		"infra-ts",
+		"stripe",
+		"payments",
+		"provider"
+	],
+	"license": "Apache-2.0",
+	"author": "Andre Landgraf <andre@neon.tech>",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./src/index.ts"
+		},
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"main": "./dist/index.js",
+		"types": "./dist/index.d.ts",
+		"exports": {
+			".": {
+				"types": "./dist/index.d.ts",
+				"import": "./dist/index.js"
+			},
+			"./package.json": "./package.json"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsup src/index.ts --format esm --dts --clean --sourcemap --tsconfig tsconfig.build.json",
+		"typecheck": "tsc -p tsconfig.json --noEmit"
+	},
+	"dependencies": {
+		"@infra-ts/core": "workspace:*",
+		"zod": "^4.0.0"
+	},
+	"engines": {
+		"node": ">=20"
+	}
+}

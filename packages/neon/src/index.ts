@@ -8,15 +8,19 @@
  */
 
 export {
+	NeonAccount,
 	NeonAuth,
 	NeonDataApi,
 	NeonPostgres,
 	NeonProject,
+	NeonReadReplica,
+	type NeonAccountOptions,
 	type NeonAuthOptions,
 	type NeonComputeConfig,
 	type NeonDataApiOptions,
 	type NeonPostgresOptions,
 	type NeonProjectOptions,
+	type NeonReadReplicaOptions,
 } from "./lib/entities.js";
 
 export {

@@ -31,6 +31,16 @@ export {
 } from "./lib/engine.js";
 
 export { resolveEntityCredentials } from "./lib/credentials.js";
+export {
+	accountCredentials,
+	collectAccounts,
+	link,
+	login,
+	type LinkOptions,
+	type LinkResult,
+	type LoginOptions,
+	type LoginResult,
+} from "./lib/accounts.js";
 export { runHook, type RunHookOptions } from "./lib/hooks-runner.js";
 export { envFileFor, toEntries, writeEnvFile } from "./lib/dotenv.js";
 export {

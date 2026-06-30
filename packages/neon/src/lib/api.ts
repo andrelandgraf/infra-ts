@@ -13,6 +13,8 @@ export interface NeonProjectSnapshot {
 	orgId?: string;
 	regionId: string;
 	pgVersion: number;
+	/** Whether logical replication (`wal_level=logical`) is enabled. */
+	logicalReplication: boolean;
 }
 
 /** A Neon branch as infra-ts reads it. */
@@ -47,6 +49,18 @@ export interface CreateProjectInput {
 	orgId?: string;
 	regionId: string;
 	pgVersion: number;
+	/** Enable logical replication at creation (cannot be disabled later). */
+	logicalReplication?: boolean;
+}
+
+/** Input for {@link NeonApi.createEndpoint}: a new compute endpoint on a branch. */
+export interface CreateEndpointInput {
+	branchId: string;
+	/** `read_write` (primary) or `read_only` (read replica). */
+	type: "read_write" | "read_only";
+	autoscalingLimitMinCu?: number;
+	autoscalingLimitMaxCu?: number;
+	suspendTimeoutSeconds?: number;
 }
 
 /** Neon Auth integration as infra-ts reads it. */
@@ -157,6 +171,14 @@ export class NeonApi {
 		});
 	}
 
+	/** List the organizations the authenticated user belongs to (for `infra link`). */
+	async listOrganizations(): Promise<{ id: string; name: string }[]> {
+		const res = await this.rest.get<{
+			organizations?: { id: string; name: string }[];
+		}>("/users/me/organizations");
+		return res.organizations ?? [];
+	}
+
 	async createProject(input: CreateProjectInput): Promise<{
 		project: NeonProjectSnapshot;
 		defaultBranch?: NeonBranchSnapshot;
@@ -168,6 +190,9 @@ export class NeonApi {
 				region_id: input.regionId,
 				pg_version: input.pgVersion,
 				...(input.orgId ? { org_id: input.orgId } : {}),
+				...(input.logicalReplication
+					? { settings: { enable_logical_replication: true } }
+					: {}),
 			},
 		};
 		const res = await this.rest.post<{
@@ -205,6 +230,54 @@ export class NeonApi {
 			`/projects/${projectId}/endpoints`,
 		);
 		return res.endpoints.map(mapEndpoint);
+	}
+
+	/** Create a compute endpoint (e.g. a `read_only` read replica) on a branch. */
+	async createEndpoint(
+		projectId: string,
+		input: CreateEndpointInput,
+	): Promise<NeonEndpointSnapshot> {
+		const endpoint: Record<string, unknown> = {
+			branch_id: input.branchId,
+			type: input.type,
+		};
+		if (input.autoscalingLimitMinCu !== undefined)
+			endpoint.autoscaling_limit_min_cu = input.autoscalingLimitMinCu;
+		if (input.autoscalingLimitMaxCu !== undefined)
+			endpoint.autoscaling_limit_max_cu = input.autoscalingLimitMaxCu;
+		if (input.suspendTimeoutSeconds !== undefined)
+			endpoint.suspend_timeout_seconds = input.suspendTimeoutSeconds;
+		const res = await this.withLockRetry(projectId, () =>
+			this.rest.post<{ endpoint: RawEndpoint }>(
+				`/projects/${projectId}/endpoints`,
+				{ body: { endpoint } },
+			),
+		);
+		return mapEndpoint(res.endpoint);
+	}
+
+	async deleteEndpoint(projectId: string, endpointId: string): Promise<void> {
+		await this.withLockRetry(projectId, () =>
+			this.rest.delete(`/projects/${projectId}/endpoints/${endpointId}`, {
+				allowStatuses: [404],
+			}),
+		);
+	}
+
+	/** Update project-level settings (e.g. enable logical replication — one-way). */
+	async updateProjectSettings(
+		projectId: string,
+		settings: { logicalReplication?: boolean },
+	): Promise<void> {
+		const apiSettings: Record<string, unknown> = {};
+		if (settings.logicalReplication !== undefined)
+			apiSettings.enable_logical_replication = settings.logicalReplication;
+		if (Object.keys(apiSettings).length === 0) return;
+		await this.withLockRetry(projectId, () =>
+			this.rest.patch(`/projects/${projectId}`, {
+				body: { project: { settings: apiSettings } },
+			}),
+		);
 	}
 
 	async updateBranchExpiry(
@@ -295,6 +368,8 @@ export class NeonApi {
 			databaseName: string;
 			roleName: string;
 			pooled: boolean;
+			/** Target a specific endpoint (e.g. a read replica) instead of the branch default. */
+			endpointId?: string;
 		},
 	): Promise<string> {
 		const res = await this.rest.get<{ uri: string }>(
@@ -305,6 +380,7 @@ export class NeonApi {
 					database_name: params.databaseName,
 					role_name: params.roleName,
 					pooled: params.pooled,
+					...(params.endpointId ? { endpoint_id: params.endpointId } : {}),
 				},
 			},
 		);
@@ -623,6 +699,7 @@ interface RawProject {
 	org_id?: string;
 	region_id: string;
 	pg_version: number;
+	settings?: { enable_logical_replication?: boolean };
 }
 interface RawBranch {
 	id: string;
@@ -648,6 +725,7 @@ function mapProject(p: RawProject): NeonProjectSnapshot {
 		...(p.org_id ? { orgId: p.org_id } : {}),
 		regionId: p.region_id,
 		pgVersion: p.pg_version,
+		logicalReplication: p.settings?.enable_logical_replication === true,
 	};
 }
 function mapBranch(b: RawBranch): NeonBranchSnapshot {

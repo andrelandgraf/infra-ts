@@ -149,11 +149,7 @@ export async function apply(
 		const entState = state.entities[entity.name] ?? null;
 		const ctx = { environment, credentials, logger, state: entState };
 
-		await runHook(
-			entity.hooks?.provision?.before,
-			{ environment },
-			{ cwd: rootDir },
-		);
+		await runHook(entity.hooks?.beforeApply, { environment }, { cwd: rootDir });
 
 		const result: ProvisionResult<
 			Record<string, string>,
@@ -190,7 +186,7 @@ export async function apply(
 		});
 
 		await runHook(
-			entity.hooks?.provision?.after,
+			entity.hooks?.afterApply,
 			{ environment, action: result.action, state: stateVal, env: envVal },
 			{ cwd: rootDir, env: stringify(envVal) },
 		);
@@ -272,6 +268,11 @@ export async function checkout(
 		entity.bindOutputs(outputs);
 		const entState = state.entities[entity.name] ?? null;
 		const ctx = { environment, credentials, logger, state: entState };
+		await runHook(
+			entity.hooks?.beforeCheckout,
+			{ environment },
+			{ cwd: rootDir },
+		);
 		const remote = await entity.read(ctx);
 		drift.push(...tagged(entity.diff(remote, { environment }), entity.name));
 		const env = await entity.pullEnv(ctx);
@@ -302,6 +303,18 @@ export async function checkout(
 		envByEntity,
 		options,
 	);
+
+	// after* hooks fire only once checkout succeeds (drift guard passed + env written).
+	for (const entity of selected(infra, options.only)) {
+		const envVal = envByEntity[entity.name];
+		if (!envVal) continue;
+		await runHook(
+			entity.hooks?.afterCheckout,
+			{ environment, env: envVal },
+			{ cwd: rootDir, env: envVal },
+		);
+	}
+
 	const report: CheckoutReport = {
 		environment,
 		env: envByEntity,
@@ -329,11 +342,21 @@ export async function destroy(
 		entity.bindOutputs(outputs);
 		const entState = state.entities[entity.name] ?? null;
 		const ctx = { environment, credentials, logger, state: entState };
+		await runHook(
+			entity.hooks?.beforeDestroy,
+			{ environment },
+			{ cwd: rootDir },
+		);
 		await entity.deprovision(ctx);
 		const entities = { ...state.entities };
 		delete entities[entity.name];
 		state = { ...state, entities };
 		writeState(rootDir, environment, state);
+		await runHook(
+			entity.hooks?.afterDestroy,
+			{ environment },
+			{ cwd: rootDir },
+		);
 		changes.push({
 			provider: entity.name,
 			action: "delete",

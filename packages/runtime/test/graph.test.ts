@@ -8,10 +8,10 @@ import {
 import { FakeEntity } from "./helpers.js";
 
 describe("graph", () => {
-	test("collectEntities pulls in transitive deps", () => {
+	test("collectEntities returns the listed entities", () => {
 		const a = new FakeEntity({ name: "a" });
-		const b = new FakeEntity({ name: "b", deps: [a] });
-		const all = collectEntities([b])
+		const b = new FakeEntity({ name: "b" });
+		const all = collectEntities([a, b])
 			.map((e) => e.name)
 			.sort();
 		expect(all).toEqual(["a", "b"]);
@@ -43,5 +43,28 @@ describe("graph", () => {
 		const a = new FakeEntity({ name: "a", value: refTo("b") });
 		const b = new FakeEntity({ name: "b", value: refTo("a") });
 		expect(() => topoSort([a, b])).toThrow(/cycle/i);
+	});
+});
+
+describe("toEnv", () => {
+	test("returns an OS-keyed ref bundle (default CONSTANT_CASE)", () => {
+		const a = new FakeEntity({ name: "a" });
+		expect(a.toEnv()).toEqual({
+			VALUE: { __infraRef: true, entity: "a", kind: "env", field: "value" },
+		});
+	});
+
+	test("applies envNames overrides", () => {
+		const a = new FakeEntity({ name: "a", envNames: { value: "B_VALUE" } });
+		expect(Object.keys(a.toEnv())).toEqual(["B_VALUE"]);
+	});
+
+	test("a ref from the bundle carries the dependency edge", () => {
+		const a = new FakeEntity({ name: "a" });
+		const ref = a.toEnv().VALUE;
+		if (!ref) throw new Error("expected VALUE ref");
+		const b = new FakeEntity({ name: "b", value: ref });
+		const order = topoSort([b, a]).map((e) => e.name);
+		expect(order.indexOf("a")).toBeLessThan(order.indexOf("b"));
 	});
 });

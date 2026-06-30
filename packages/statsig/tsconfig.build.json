@@ -1,0 +1,6 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"paths": { "@infra-ts/core": ["../core/dist/index.d.ts"] }
+	}
+}

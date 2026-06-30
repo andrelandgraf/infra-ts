@@ -45,6 +45,42 @@
 			"types": "./src/mux.ts",
 			"default": "./src/mux.ts"
 		},
+		"./sentry": {
+			"types": "./src/sentry.ts",
+			"default": "./src/sentry.ts"
+		},
+		"./workos": {
+			"types": "./src/workos.ts",
+			"default": "./src/workos.ts"
+		},
+		"./sanity": {
+			"types": "./src/sanity.ts",
+			"default": "./src/sanity.ts"
+		},
+		"./statsig": {
+			"types": "./src/statsig.ts",
+			"default": "./src/statsig.ts"
+		},
+		"./dub": {
+			"types": "./src/dub.ts",
+			"default": "./src/dub.ts"
+		},
+		"./stripe": {
+			"types": "./src/stripe.ts",
+			"default": "./src/stripe.ts"
+		},
+		"./posthog": {
+			"types": "./src/posthog.ts",
+			"default": "./src/posthog.ts"
+		},
+		"./elevenlabs": {
+			"types": "./src/elevenlabs.ts",
+			"default": "./src/elevenlabs.ts"
+		},
+		"./openai": {
+			"types": "./src/openai.ts",
+			"default": "./src/openai.ts"
+		},
 		"./package.json": "./package.json"
 	},
 	"publishConfig": {
@@ -73,6 +109,42 @@
 				"types": "./dist/mux.d.ts",
 				"import": "./dist/mux.js"
 			},
+			"./sentry": {
+				"types": "./dist/sentry.d.ts",
+				"import": "./dist/sentry.js"
+			},
+			"./workos": {
+				"types": "./dist/workos.d.ts",
+				"import": "./dist/workos.js"
+			},
+			"./sanity": {
+				"types": "./dist/sanity.d.ts",
+				"import": "./dist/sanity.js"
+			},
+			"./statsig": {
+				"types": "./dist/statsig.d.ts",
+				"import": "./dist/statsig.js"
+			},
+			"./dub": {
+				"types": "./dist/dub.d.ts",
+				"import": "./dist/dub.js"
+			},
+			"./stripe": {
+				"types": "./dist/stripe.d.ts",
+				"import": "./dist/stripe.js"
+			},
+			"./posthog": {
+				"types": "./dist/posthog.d.ts",
+				"import": "./dist/posthog.js"
+			},
+			"./elevenlabs": {
+				"types": "./dist/elevenlabs.d.ts",
+				"import": "./dist/elevenlabs.js"
+			},
+			"./openai": {
+				"types": "./dist/openai.d.ts",
+				"import": "./dist/openai.js"
+			},
 			"./package.json": "./package.json"
 		}
 	},
@@ -94,12 +166,21 @@
 	},
 	"devDependencies": {
 		"@infra-ts/core": "workspace:*",
+		"@infra-ts/dub": "workspace:*",
+		"@infra-ts/elevenlabs": "workspace:*",
 		"@infra-ts/mux": "workspace:*",
 		"@infra-ts/neon": "workspace:*",
+		"@infra-ts/openai": "workspace:*",
+		"@infra-ts/posthog": "workspace:*",
 		"@infra-ts/resend": "workspace:*",
 		"@infra-ts/runtime": "workspace:*",
+		"@infra-ts/sanity": "workspace:*",
+		"@infra-ts/sentry": "workspace:*",
+		"@infra-ts/statsig": "workspace:*",
+		"@infra-ts/stripe": "workspace:*",
 		"@infra-ts/upstash": "workspace:*",
-		"@infra-ts/vercel": "workspace:*"
+		"@infra-ts/vercel": "workspace:*",
+		"@infra-ts/workos": "workspace:*"
 	},
 	"engines": {
 		"node": ">=20"

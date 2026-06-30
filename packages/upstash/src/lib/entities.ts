@@ -8,6 +8,7 @@ import {
 	type ProvisionContext,
 	type ProvisionResult,
 	type ReadContext,
+	type Ref,
 	type RestClient,
 	type StandardSchemaV1,
 } from "@infra-ts/core";
@@ -342,6 +343,180 @@ export class UpstashQStashQueue extends Entity<
 		await this.rest(ctx).delete(`/v2/queues/${encodeURIComponent(this.name)}`, {
 			allowStatuses: [404],
 		});
+	}
+}
+
+// ─── QStash schedules + topics (Bearer QSTASH_TOKEN) ──────────────────────────
+
+const qstashCredsSchema = z.object({
+	QSTASH_TOKEN: z.string().min(1),
+}) as unknown as StandardSchemaV1<unknown, QStashCreds>;
+
+function qstashRest(ctx: { credentials: QStashCreds }): RestClient {
+	return createRestClient({
+		provider: "upstash-qstash",
+		baseUrl: QSTASH_API,
+		auth: { type: "bearer", token: ctx.credentials.QSTASH_TOKEN },
+	});
+}
+
+type ScheduleEnv = Record<string, never>;
+export interface UpstashQStashScheduleOptions extends EntityCommon<
+	ScheduleEnv,
+	{ id: string }
+> {
+	/** Destination URL (or a topic/URL-group name) the schedule delivers to. */
+	destination: string | Ref<string>;
+	/** Cron expression, e.g. `"0 * * * *"`. */
+	cron: string;
+}
+
+export class UpstashQStashSchedule extends Entity<
+	UpstashQStashScheduleOptions,
+	QStashCreds,
+	ScheduleEnv,
+	{ id: string },
+	{ scheduleId: string }
+> {
+	readonly credentialsSchema = qstashCredsSchema;
+	readonly envSchema = z.object({}) as unknown as StandardSchemaV1<
+		unknown,
+		ScheduleEnv
+	>;
+	readonly stateSchema = z.object({
+		id: z.string(),
+	}) as unknown as StandardSchemaV1<unknown, { id: string }>;
+	readonly envKeys = [] as const;
+	override resolveCredentials(
+		bag: Record<string, string | undefined>,
+	): unknown {
+		return { QSTASH_TOKEN: bag.QSTASH_TOKEN ?? "" };
+	}
+	async read(
+		ctx: ReadContext<QStashCreds, { id: string }>,
+	): Promise<{ scheduleId: string } | null> {
+		if (!ctx.state?.id) return null;
+		return qstashRest(ctx).get<{ scheduleId: string } | null>(
+			`/v2/schedules/${ctx.state.id}`,
+			{ allowStatuses: [404] },
+		);
+	}
+	diff(remote: { scheduleId: string } | null): Change[] {
+		return remote
+			? []
+			: [{ action: "create", kind: "qstash-schedule", identifier: this.name }];
+	}
+	async provision(
+		ctx: ProvisionContext<QStashCreds, { id: string }>,
+	): Promise<ProvisionResult<ScheduleEnv, { id: string }>> {
+		const existing = await this.read(ctx);
+		if (existing) {
+			return {
+				action: "noop",
+				id: existing.scheduleId,
+				state: { id: existing.scheduleId },
+				env: {},
+			};
+		}
+		const created = await qstashRest(ctx).post<{ scheduleId: string }>(
+			`/v2/schedules/${encodeURIComponent(this.config.destination)}`,
+			{ headers: { "Upstash-Cron": this.config.cron }, body: {} },
+		);
+		return {
+			action: "create",
+			id: created.scheduleId,
+			state: { id: created.scheduleId },
+			env: {},
+		};
+	}
+	async pullEnv(): Promise<ScheduleEnv> {
+		return {};
+	}
+	async deprovision(
+		ctx: ProvisionContext<QStashCreds, { id: string }>,
+	): Promise<void> {
+		if (!ctx.state?.id) return;
+		await qstashRest(ctx).delete(`/v2/schedules/${ctx.state.id}`, {
+			allowStatuses: [404],
+		});
+	}
+}
+
+type TopicEnv = { qstashTopicName: string };
+export interface UpstashQStashTopicOptions extends EntityCommon<
+	TopicEnv,
+	{ name: string }
+> {
+	/** Endpoint URLs that belong to this topic (URL group). */
+	endpoints: (string | Ref<string>)[];
+}
+
+export class UpstashQStashTopic extends Entity<
+	UpstashQStashTopicOptions,
+	QStashCreds,
+	TopicEnv,
+	{ name: string },
+	{ name: string }
+> {
+	readonly credentialsSchema = qstashCredsSchema;
+	readonly envSchema = z.object({
+		qstashTopicName: z.string(),
+	}) as unknown as StandardSchemaV1<unknown, TopicEnv>;
+	readonly stateSchema = z.object({
+		name: z.string(),
+	}) as unknown as StandardSchemaV1<unknown, { name: string }>;
+	readonly envKeys = ["qstashTopicName"] as const;
+	override resolveCredentials(
+		bag: Record<string, string | undefined>,
+	): unknown {
+		return { QSTASH_TOKEN: bag.QSTASH_TOKEN ?? "" };
+	}
+	async read(
+		ctx: ReadContext<QStashCreds, { name: string }>,
+	): Promise<{ name: string } | null> {
+		return qstashRest(ctx).get<{ name: string } | null>(
+			`/v2/topics/${encodeURIComponent(this.name)}`,
+			{ allowStatuses: [404] },
+		);
+	}
+	diff(remote: { name: string } | null): Change[] {
+		return remote
+			? []
+			: [{ action: "create", kind: "qstash-topic", identifier: this.name }];
+	}
+	async provision(
+		ctx: ProvisionContext<QStashCreds, { name: string }>,
+	): Promise<ProvisionResult<TopicEnv, { name: string }>> {
+		const existing = await this.read(ctx);
+		if (!existing) {
+			await qstashRest(ctx).post(
+				`/v2/topics/${encodeURIComponent(this.name)}/endpoints`,
+				{
+					body: {
+						endpoints: this.config.endpoints.map((url) => ({ url })),
+					},
+				},
+			);
+		}
+		return {
+			action: existing ? "noop" : "create",
+			id: this.name,
+			state: { name: this.name },
+			env: { qstashTopicName: this.name },
+		};
+	}
+	async pullEnv(): Promise<TopicEnv> {
+		return { qstashTopicName: this.name };
+	}
+	async deprovision(
+		ctx: ProvisionContext<QStashCreds, { name: string }>,
+	): Promise<void> {
+		await qstashRest(ctx).delete(
+			`/v2/topics/${encodeURIComponent(this.name)}`,
+			{
+				allowStatuses: [404],
+			},
+		);
 	}
 }
 

@@ -22,6 +22,11 @@ export interface RestClientOptions {
 export interface RequestOptions {
 	query?: Record<string, string | number | boolean | undefined>;
 	body?: unknown;
+	/**
+	 * Form body (`application/x-www-form-urlencoded`) instead of JSON. The caller passes an
+	 * already-flattened map (e.g. Stripe's `enabled_events[0]` keys). Mutually exclusive with `body`.
+	 */
+	form?: Record<string, string>;
 	headers?: Record<string, string>;
 	/** Status codes to treat as `null` instead of throwing (e.g. `404` for existence probes). */
 	allowStatuses?: number[];
@@ -72,7 +77,10 @@ export function createRestClient(options: RestClientOptions): RestClient {
 			...reqOptions.headers,
 		};
 		let bodyInit: string | undefined;
-		if (reqOptions.body !== undefined) {
+		if (reqOptions.form !== undefined) {
+			headers["Content-Type"] = "application/x-www-form-urlencoded";
+			bodyInit = new URLSearchParams(reqOptions.form).toString();
+		} else if (reqOptions.body !== undefined) {
 			headers["Content-Type"] = "application/json";
 			bodyInit = JSON.stringify(reqOptions.body);
 		}

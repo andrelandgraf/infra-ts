@@ -2,7 +2,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+	Account,
+	type AccountScope,
 	type Change,
+	type CliAuth,
 	Entity,
 	type EntityCommon,
 	type ProvisionContext,
@@ -81,6 +84,28 @@ export class FakeEntity extends Entity<
 	}
 	async deprovision(): Promise<void> {
 		fakeRemote.delete(this.name);
+	}
+}
+
+/** A network-free Account for exercising login/link + scope wiring. */
+export class FakeAccount extends Account<Record<string, never>> {
+	readonly credentialsSchema = passthrough<Record<string, never>>();
+	override resolveCredentials(): unknown {
+		return {};
+	}
+	cliAuth(): CliAuth {
+		return {
+			providerId: "fake",
+			envVar: "FAKE_TOKEN",
+			detect: ["true"],
+			login: ["true"],
+		};
+	}
+	async listScopes(): Promise<AccountScope[]> {
+		return [
+			{ id: "scope-1", name: "One" },
+			{ id: "scope-2", name: "Two" },
+		];
 	}
 }
 

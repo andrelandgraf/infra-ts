@@ -53,7 +53,7 @@ describe("engine: apply", () => {
 		}
 	});
 
-	test("runs provision hooks", async () => {
+	test("runs apply hooks (beforeApply/afterApply)", async () => {
 		const { dir, cleanup } = tempDir();
 		const calls: string[] = [];
 		try {
@@ -62,13 +62,11 @@ describe("engine: apply", () => {
 					new FakeEntity({
 						name: "a",
 						hooks: {
-							provision: {
-								before: () => {
-									calls.push("before");
-								},
-								after: ({ env }) => {
-									calls.push(`after:${env.value}`);
-								},
+							beforeApply: () => {
+								calls.push("before");
+							},
+							afterApply: ({ env }) => {
+								calls.push(`after:${env.value}`);
 							},
 						},
 					}),
@@ -152,7 +150,7 @@ describe("engine: plan / status / checkout / destroy", () => {
 			const a = new FakeEntity({ name: "a" });
 			const b = new FakeEntity({
 				name: "b",
-				deps: [a],
+				value: a.env.value, // ref → edge a → b, so destroy is b then a
 				envNames: { value: "B_VALUE" },
 			});
 			const infra = defineInfra({ entities: [a, b] });
@@ -181,6 +179,63 @@ describe("engine: plan / status / checkout / destroy", () => {
 			expect(readFileSync(join(dir, ".env.production"), "utf8")).toContain(
 				"VALUE=p",
 			);
+		} finally {
+			cleanup();
+		}
+	});
+});
+
+describe("engine: checkout + destroy hooks", () => {
+	test("checkout runs before/after hooks (after only on success)", async () => {
+		const { dir, cleanup } = tempDir();
+		const calls: string[] = [];
+		try {
+			const infra = defineInfra({
+				entities: [
+					new FakeEntity({
+						name: "a",
+						value: "v",
+						hooks: {
+							beforeCheckout: () => {
+								calls.push("before");
+							},
+							afterCheckout: ({ env }) => {
+								calls.push(`after:${env.value}`);
+							},
+						},
+					}),
+				],
+			});
+			await apply(infra, { rootDir: dir, environment: "test" });
+			await checkout(infra, { rootDir: dir, environment: "test" });
+			expect(calls).toEqual(["before", "after:v"]);
+		} finally {
+			cleanup();
+		}
+	});
+
+	test("destroy runs before/after hooks", async () => {
+		const { dir, cleanup } = tempDir();
+		const calls: string[] = [];
+		try {
+			const infra = defineInfra({
+				entities: [
+					new FakeEntity({
+						name: "a",
+						hooks: {
+							beforeDestroy: () => {
+								calls.push("before");
+							},
+							afterDestroy: () => {
+								calls.push("after");
+							},
+						},
+					}),
+				],
+			});
+			await apply(infra, { rootDir: dir, environment: "test" });
+			await destroy(infra, { rootDir: dir, environment: "test" });
+			expect(calls).toEqual(["before", "after"]);
 		} finally {
 			cleanup();
 		}

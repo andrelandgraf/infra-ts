@@ -8,6 +8,7 @@ import {
 	type ProvisionContext,
 	type ProvisionResult,
 	type ReadContext,
+	type Ref,
 	type RestClient,
 	type StandardSchemaV1,
 } from "@infra-ts/core";
@@ -329,6 +330,104 @@ export class MuxPlaybackRestriction extends MuxEntity<
 			{
 				allowStatuses: [404],
 			},
+		);
+	}
+}
+
+// ─── Live-stream simulcast target ─────────────────────────────────────────────
+
+interface RawSimulcastTarget {
+	id: string;
+}
+export interface MuxLiveStreamSimulcastTargetOptions extends EntityCommon<
+	Record<string, never>,
+	{ id: string }
+> {
+	/** Parent live stream id (or `liveStream.env.muxLiveStreamId` ref). */
+	liveStreamId: string | Ref<string>;
+	/** RTMP(S) ingest URL of the third-party destination (YouTube, Twitch, …). */
+	url: string;
+	/** Stream key for the destination. */
+	streamKey?: string;
+	passthrough?: string;
+}
+
+export class MuxLiveStreamSimulcastTarget extends MuxEntity<
+	MuxLiveStreamSimulcastTargetOptions,
+	Record<string, never>,
+	{ id: string },
+	RawSimulcastTarget
+> {
+	readonly envSchema = z.object({}) as unknown as StandardSchemaV1<
+		unknown,
+		Record<string, never>
+	>;
+	readonly stateSchema = z.object({
+		id: z.string(),
+	}) as unknown as StandardSchemaV1<unknown, { id: string }>;
+	readonly envKeys = [] as const;
+
+	private get liveStreamId(): string {
+		return this.config.liveStreamId;
+	}
+	async read(
+		ctx: ReadContext<MuxCreds, { id: string }>,
+	): Promise<RawSimulcastTarget | null> {
+		if (!ctx.state?.id) return null;
+		const res = await this.rest(ctx).get<{ data: RawSimulcastTarget } | null>(
+			`/video/v1/live-streams/${this.liveStreamId}/simulcast-targets/${ctx.state.id}`,
+			{ allowStatuses: [404] },
+		);
+		return res ? res.data : null;
+	}
+	diff(remote: RawSimulcastTarget | null): Change[] {
+		return remote
+			? []
+			: [{ action: "create", kind: "simulcast-target", identifier: this.name }];
+	}
+	async provision(
+		ctx: ProvisionContext<MuxCreds, { id: string }>,
+	): Promise<ProvisionResult<Record<string, never>, { id: string }>> {
+		const existing = await this.read(ctx);
+		if (existing) {
+			return {
+				action: "noop",
+				id: existing.id,
+				state: { id: existing.id },
+				env: {},
+			};
+		}
+		const res = await this.rest(ctx).post<{ data: RawSimulcastTarget }>(
+			`/video/v1/live-streams/${this.liveStreamId}/simulcast-targets`,
+			{
+				body: {
+					url: this.config.url,
+					...(this.config.streamKey
+						? { stream_key: this.config.streamKey }
+						: {}),
+					...(this.config.passthrough
+						? { passthrough: this.config.passthrough }
+						: {}),
+				},
+			},
+		);
+		return {
+			action: "create",
+			id: res.data.id,
+			state: { id: res.data.id },
+			env: {},
+		};
+	}
+	async pullEnv(): Promise<Record<string, never>> {
+		return {};
+	}
+	async deprovision(
+		ctx: ProvisionContext<MuxCreds, { id: string }>,
+	): Promise<void> {
+		if (!ctx.state?.id) return;
+		await this.rest(ctx).delete(
+			`/video/v1/live-streams/${this.liveStreamId}/simulcast-targets/${ctx.state.id}`,
+			{ allowStatuses: [404] },
 		);
 	}
 }

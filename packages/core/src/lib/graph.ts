@@ -16,19 +16,18 @@ function findNested(value: unknown, into: AnyEntity[]): void {
 	}
 }
 
-/** Direct children of an entity: nested entities in its options + explicit `deps`. */
+/** Direct children of an entity: entity instances nested anywhere in its options. */
 function childrenOf(entity: AnyEntity): AnyEntity[] {
 	const nested: AnyEntity[] = [];
 	// `options` is protected; reach it via a structural cast (engine-internal).
 	const options = (entity as unknown as { options: unknown }).options;
 	findNested(options, nested);
-	for (const dep of entity.deps) nested.push(dep);
 	return nested;
 }
 
 /**
- * Collect the full entity set reachable from `roots` (walking nested entities in options and
- * explicit `deps`), deduplicated by instance. Duplicate *ids* are caught later in validation.
+ * Collect the full entity set reachable from `roots` (walking entity instances nested in options),
+ * deduplicated by instance. Duplicate *ids* are caught later in validation.
  */
 export function collectEntities(roots: readonly AnyEntity[]): AnyEntity[] {
 	const seen = new Set<AnyEntity>();
@@ -66,8 +65,8 @@ export function assertUniqueIds(entities: readonly AnyEntity[]): void {
 }
 
 /**
- * Topologically sort entities so every entity comes after the ones it depends on (refs +
- * `deps`). Throws {@link InfraError} (`Cycle`) on a dependency cycle, naming the cycle.
+ * Topologically sort entities so every entity comes after the ones it depends on (inferred from
+ * refs). Throws {@link InfraError} (`Cycle`) on a dependency cycle, naming the cycle.
  */
 export function topoSort(entities: readonly AnyEntity[]): AnyEntity[] {
 	const byName = new Map(entities.map((e) => [e.name, e] as const));

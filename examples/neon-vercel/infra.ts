@@ -25,8 +25,9 @@ export default defineInfra({
 			name: "infra-ts-example",
 			framework: "nextjs",
 			settings: { buildCommand: "next build", nodeVersion: "20.x" },
-			// Typed cross-entity wiring: Neon's connection string → a Vercel env var.
-			env: { DATABASE_URL: db.env.databaseUrl },
+			// Typed cross-entity wiring: spread Neon's whole env (DATABASE_URL,
+			// DATABASE_URL_UNPOOLED) into Vercel. The refs also create the dependency edge.
+			env: { ...db.toEnv() },
 		}),
 	],
 });

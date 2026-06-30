@@ -26,17 +26,42 @@
       },
       "devDependencies": {
         "@infra-ts/core": "workspace:*",
+        "@infra-ts/dub": "workspace:*",
+        "@infra-ts/elevenlabs": "workspace:*",
         "@infra-ts/mux": "workspace:*",
         "@infra-ts/neon": "workspace:*",
+        "@infra-ts/openai": "workspace:*",
+        "@infra-ts/posthog": "workspace:*",
         "@infra-ts/resend": "workspace:*",
         "@infra-ts/runtime": "workspace:*",
+        "@infra-ts/sanity": "workspace:*",
+        "@infra-ts/sentry": "workspace:*",
+        "@infra-ts/statsig": "workspace:*",
+        "@infra-ts/stripe": "workspace:*",
         "@infra-ts/upstash": "workspace:*",
         "@infra-ts/vercel": "workspace:*",
+        "@infra-ts/workos": "workspace:*",
       },
     },
     "packages/core": {
       "name": "@infra-ts/core",
       "version": "0.1.0",
+    },
+    "packages/dub": {
+      "name": "@infra-ts/dub",
+      "version": "0.1.0",
+      "dependencies": {
+        "@infra-ts/core": "workspace:*",
+        "zod": "^4.0.0",
+      },
+    },
+    "packages/elevenlabs": {
+      "name": "@infra-ts/elevenlabs",
+      "version": "0.1.0",
+      "dependencies": {
+        "@infra-ts/core": "workspace:*",
+        "zod": "^4.0.0",
+      },
     },
     "packages/mux": {
       "name": "@infra-ts/mux",
@@ -56,6 +81,22 @@
         "zod": "^4.0.0",
       },
     },
+    "packages/openai": {
+      "name": "@infra-ts/openai",
+      "version": "0.1.0",
+      "dependencies": {
+        "@infra-ts/core": "workspace:*",
+        "zod": "^4.0.0",
+      },
+    },
+    "packages/posthog": {
+      "name": "@infra-ts/posthog",
+      "version": "0.1.0",
+      "dependencies": {
+        "@infra-ts/core": "workspace:*",
+        "zod": "^4.0.0",
+      },
+    },
     "packages/resend": {
       "name": "@infra-ts/resend",
       "version": "0.1.0",
@@ -72,6 +113,38 @@
         "jiti": "^2.7.0",
       },
     },
+    "packages/sanity": {
+      "name": "@infra-ts/sanity",
+      "version": "0.1.0",
+      "dependencies": {
+        "@infra-ts/core": "workspace:*",
+        "zod": "^4.0.0",
+      },
+    },
+    "packages/sentry": {
+      "name": "@infra-ts/sentry",
+      "version": "0.1.0",
+      "dependencies": {
+        "@infra-ts/core": "workspace:*",
+        "zod": "^4.0.0",
+      },
+    },
+    "packages/statsig": {
+      "name": "@infra-ts/statsig",
+      "version": "0.1.0",
+      "dependencies": {
+        "@infra-ts/core": "workspace:*",
+        "zod": "^4.0.0",
+      },
+    },
+    "packages/stripe": {
+      "name": "@infra-ts/stripe",
+      "version": "0.1.0",
+      "dependencies": {
+        "@infra-ts/core": "workspace:*",
+        "zod": "^4.0.0",
+      },
+    },
     "packages/upstash": {
       "name": "@infra-ts/upstash",
       "version": "0.1.0",
@@ -82,6 +155,14 @@
     },
     "packages/vercel": {
       "name": "@infra-ts/vercel",
+      "version": "0.1.0",
+      "dependencies": {
+        "@infra-ts/core": "workspace:*",
+        "zod": "^4.0.0",
+      },
+    },
+    "packages/workos": {
+      "name": "@infra-ts/workos",
       "version": "0.1.0",
       "dependencies": {
         "@infra-ts/core": "workspace:*",
@@ -144,17 +225,35 @@
 
     "@infra-ts/core": ["@infra-ts/core@workspace:packages/core"],
 
+    "@infra-ts/dub": ["@infra-ts/dub@workspace:packages/dub"],
+
+    "@infra-ts/elevenlabs": ["@infra-ts/elevenlabs@workspace:packages/elevenlabs"],
+
     "@infra-ts/mux": ["@infra-ts/mux@workspace:packages/mux"],
 
     "@infra-ts/neon": ["@infra-ts/neon@workspace:packages/neon"],
+
+    "@infra-ts/openai": ["@infra-ts/openai@workspace:packages/openai"],
+
+    "@infra-ts/posthog": ["@infra-ts/posthog@workspace:packages/posthog"],
 
     "@infra-ts/resend": ["@infra-ts/resend@workspace:packages/resend"],
 
     "@infra-ts/runtime": ["@infra-ts/runtime@workspace:packages/runtime"],
 
+    "@infra-ts/sanity": ["@infra-ts/sanity@workspace:packages/sanity"],
+
+    "@infra-ts/sentry": ["@infra-ts/sentry@workspace:packages/sentry"],
+
+    "@infra-ts/statsig": ["@infra-ts/statsig@workspace:packages/statsig"],
+
+    "@infra-ts/stripe": ["@infra-ts/stripe@workspace:packages/stripe"],
+
     "@infra-ts/upstash": ["@infra-ts/upstash@workspace:packages/upstash"],
 
     "@infra-ts/vercel": ["@infra-ts/vercel@workspace:packages/vercel"],
+
+    "@infra-ts/workos": ["@infra-ts/workos@workspace:packages/workos"],
 
     "@jridgewell/gen-mapping": ["@jridgewell/gen-mapping@0.3.13", "https://npm-proxy.cloud.databricks.com/@jridgewell/gen-mapping/-/gen-mapping-0.3.13.tgz", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.0", "@jridgewell/trace-mapping": "^0.3.24" } }, "sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA=="],
 

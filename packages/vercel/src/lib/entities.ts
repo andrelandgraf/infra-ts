@@ -1,5 +1,9 @@
 import {
+	Account,
+	type AccountOptions,
+	type AccountScope,
 	type Change,
+	type CliAuth,
 	Entity,
 	type EntityCommon,
 	ErrorCode,
@@ -13,7 +17,10 @@ import {
 import { z } from "zod";
 import {
 	VercelApi,
+	type VercelAccessGroupSnapshot,
+	type VercelDnsRecordSnapshot,
 	type VercelEnvTarget,
+	type VercelLogDrainSnapshot,
 	type VercelProjectSettings,
 	type VercelProjectSnapshot,
 	VERCEL_SETTING_KEYS,
@@ -30,7 +37,7 @@ const credentialsSchema = z.object({
 
 /** Shared base: Vercel credentials (VERCEL_TOKEN, with vercel-CLI fallback) + an API client. */
 abstract class VercelEntity<
-	O extends EntityCommon<Env, State> & { team?: string },
+	O extends EntityCommon<Env, State> & { team?: string | Ref<string> },
 	Env extends Record<string, string>,
 	State extends Record<string, unknown>,
 	Remote,
@@ -69,7 +76,7 @@ export interface VercelProjectOptions extends EntityCommon<
 	VercelProjectEnv,
 	{ id: string }
 > {
-	team?: string;
+	team?: string | Ref<string>;
 	framework?: string | null;
 	settings?: VercelProjectSettings;
 	env?: VercelEnvInput;
@@ -271,7 +278,7 @@ export interface VercelEdgeConfigOptions extends EntityCommon<
 	EdgeConfigEnv,
 	{ id: string }
 > {
-	team?: string;
+	team?: string | Ref<string>;
 	slug: string;
 	items?: Record<string, unknown>;
 }
@@ -363,7 +370,7 @@ export interface VercelWebhookOptions extends EntityCommon<
 	WebhookEnv,
 	{ id: string }
 > {
-	team?: string;
+	team?: string | Ref<string>;
 	url: string | Ref<string>;
 	events: string[];
 	projectIds?: (string | Ref<string>)[];
@@ -452,5 +459,328 @@ export class VercelWebhook extends VercelEntity<
 		if (!ctx.state?.id) return;
 		const api = await this.api(ctx);
 		await api.deleteWebhook(ctx.state.id);
+	}
+}
+
+// ─── DNS record ───────────────────────────────────────────────────────────────
+
+export interface VercelDnsRecordOptions extends EntityCommon<
+	Record<string, never>,
+	{ id: string }
+> {
+	team?: string | Ref<string>;
+	/** The domain the record belongs to (must already be on the account). */
+	domain: string | Ref<string>;
+	type: "A" | "AAAA" | "CNAME" | "TXT" | "MX" | "NS" | "SRV" | "CAA" | "ALIAS";
+	/** Subdomain (use "" for the apex). */
+	recordName: string;
+	value: string | Ref<string>;
+	ttl?: number;
+}
+
+export class VercelDnsRecord extends VercelEntity<
+	VercelDnsRecordOptions,
+	Record<string, never>,
+	{ id: string },
+	VercelDnsRecord_Remote
+> {
+	readonly envSchema = z.object({}) as unknown as StandardSchemaV1<
+		unknown,
+		Record<string, never>
+	>;
+	readonly stateSchema = z.object({
+		id: z.string(),
+	}) as unknown as StandardSchemaV1<unknown, { id: string }>;
+	readonly envKeys = [] as const;
+
+	private get domain(): string {
+		return this.config.domain;
+	}
+	private matches(r: VercelDnsRecord_Remote): boolean {
+		return (
+			r.type === this.config.type &&
+			r.name === this.config.recordName &&
+			r.value === this.config.value
+		);
+	}
+	private async find(
+		ctx: ReadContext<VercelCreds, { id: string }>,
+	): Promise<VercelDnsRecord_Remote | null> {
+		const api = await this.api(ctx);
+		const records = await api.listDnsRecords(this.domain);
+		if (ctx.state?.id) {
+			return records.find((r) => r.id === ctx.state?.id) ?? null;
+		}
+		return records.find((r) => this.matches(r)) ?? null;
+	}
+	async read(
+		ctx: ReadContext<VercelCreds, { id: string }>,
+	): Promise<VercelDnsRecord_Remote | null> {
+		return this.find(ctx);
+	}
+	diff(remote: VercelDnsRecord_Remote | null): Change[] {
+		return remote
+			? []
+			: [
+					{
+						action: "create",
+						kind: "dns-record",
+						identifier: `${this.config.type} ${this.config.recordName || "@"}`,
+					},
+				];
+	}
+	async provision(
+		ctx: ProvisionContext<VercelCreds, { id: string }>,
+	): Promise<ProvisionResult<Record<string, never>, { id: string }>> {
+		const existing = await this.find(ctx);
+		if (existing) {
+			return {
+				action: "noop",
+				id: existing.id,
+				state: { id: existing.id },
+				env: {},
+			};
+		}
+		const api = await this.api(ctx);
+		const created = await api.createDnsRecord(this.domain, {
+			type: this.config.type,
+			name: this.config.recordName,
+			value: this.config.value,
+			...(this.config.ttl !== undefined ? { ttl: this.config.ttl } : {}),
+		});
+		return {
+			action: "create",
+			id: created.uid,
+			state: { id: created.uid },
+			env: {},
+		};
+	}
+	async pullEnv(): Promise<Record<string, never>> {
+		return {};
+	}
+	async deprovision(
+		ctx: ProvisionContext<VercelCreds, { id: string }>,
+	): Promise<void> {
+		if (!ctx.state?.id) return;
+		const api = await this.api(ctx);
+		await api.deleteDnsRecord(this.domain, ctx.state.id);
+	}
+}
+type VercelDnsRecord_Remote = VercelDnsRecordSnapshot;
+
+// ─── Log drain ────────────────────────────────────────────────────────────────
+
+export interface VercelLogDrainOptions extends EntityCommon<
+	Record<string, never>,
+	{ id: string }
+> {
+	team?: string | Ref<string>;
+	url: string | Ref<string>;
+	deliveryFormat?: "json" | "ndjson" | "syslog";
+	sources?: ("static" | "lambda" | "edge" | "external" | "build")[];
+	projectIds?: (string | Ref<string>)[];
+}
+
+export class VercelLogDrain extends VercelEntity<
+	VercelLogDrainOptions,
+	Record<string, never>,
+	{ id: string },
+	VercelLogDrain_Remote
+> {
+	readonly envSchema = z.object({}) as unknown as StandardSchemaV1<
+		unknown,
+		Record<string, never>
+	>;
+	readonly stateSchema = z.object({
+		id: z.string(),
+	}) as unknown as StandardSchemaV1<unknown, { id: string }>;
+	readonly envKeys = [] as const;
+
+	private async find(
+		ctx: ReadContext<VercelCreds, { id: string }>,
+	): Promise<VercelLogDrain_Remote | null> {
+		if (!ctx.state?.id) return null;
+		const api = await this.api(ctx);
+		const drains = await api.listLogDrains();
+		return drains.find((d) => d.id === ctx.state?.id) ?? null;
+	}
+	async read(
+		ctx: ReadContext<VercelCreds, { id: string }>,
+	): Promise<VercelLogDrain_Remote | null> {
+		return this.find(ctx);
+	}
+	diff(remote: VercelLogDrain_Remote | null): Change[] {
+		return remote
+			? []
+			: [{ action: "create", kind: "log-drain", identifier: this.name }];
+	}
+	async provision(
+		ctx: ProvisionContext<VercelCreds, { id: string }>,
+	): Promise<ProvisionResult<Record<string, never>, { id: string }>> {
+		const existing = await this.find(ctx);
+		if (existing) {
+			return {
+				action: "noop",
+				id: existing.id,
+				state: { id: existing.id },
+				env: {},
+			};
+		}
+		const api = await this.api(ctx);
+		const projectIds = (this.config.projectIds ?? []).filter(
+			(p): p is string => typeof p === "string",
+		);
+		const created = await api.createLogDrain({
+			name: this.name,
+			url: this.config.url,
+			deliveryFormat: this.config.deliveryFormat ?? "json",
+			sources: this.config.sources ?? ["lambda", "static", "edge"],
+			...(projectIds.length > 0 ? { projectIds } : {}),
+		});
+		return {
+			action: "create",
+			id: created.id,
+			state: { id: created.id },
+			env: {},
+		};
+	}
+	async pullEnv(): Promise<Record<string, never>> {
+		return {};
+	}
+	async deprovision(
+		ctx: ProvisionContext<VercelCreds, { id: string }>,
+	): Promise<void> {
+		if (!ctx.state?.id) return;
+		const api = await this.api(ctx);
+		await api.deleteLogDrain(ctx.state.id);
+	}
+}
+type VercelLogDrain_Remote = VercelLogDrainSnapshot;
+
+// ─── Access group ─────────────────────────────────────────────────────────────
+
+type AccessGroupEnv = { vercelAccessGroupId: string };
+export interface VercelAccessGroupOptions extends EntityCommon<
+	AccessGroupEnv,
+	{ id: string }
+> {
+	team?: string | Ref<string>;
+	/** Display name. Defaults to the entity `name`. */
+	groupName?: string;
+}
+
+export class VercelAccessGroup extends VercelEntity<
+	VercelAccessGroupOptions,
+	AccessGroupEnv,
+	{ id: string },
+	VercelAccessGroup_Remote
+> {
+	readonly envSchema = z.object({
+		vercelAccessGroupId: z.string(),
+	}) as unknown as StandardSchemaV1<unknown, AccessGroupEnv>;
+	readonly stateSchema = z.object({
+		id: z.string(),
+	}) as unknown as StandardSchemaV1<unknown, { id: string }>;
+	readonly envKeys = ["vercelAccessGroupId"] as const;
+
+	private get groupName(): string {
+		return this.config.groupName ?? this.name;
+	}
+	async read(
+		ctx: ReadContext<VercelCreds, { id: string }>,
+	): Promise<VercelAccessGroup_Remote | null> {
+		if (!ctx.state?.id) return null;
+		const api = await this.api(ctx);
+		return api.getAccessGroup(ctx.state.id);
+	}
+	diff(remote: VercelAccessGroup_Remote | null): Change[] {
+		if (!remote) {
+			return [
+				{ action: "create", kind: "access-group", identifier: this.groupName },
+			];
+		}
+		return remote.name !== this.groupName
+			? [
+					{
+						action: "update",
+						kind: "access-group",
+						identifier: this.groupName,
+						detail: "name",
+					},
+				]
+			: [];
+	}
+	async provision(
+		ctx: ProvisionContext<VercelCreds, { id: string }>,
+	): Promise<ProvisionResult<AccessGroupEnv, { id: string }>> {
+		const api = await this.api(ctx);
+		const existing = ctx.state?.id
+			? await api.getAccessGroup(ctx.state.id)
+			: null;
+		if (existing) {
+			let action: "noop" | "update" = "noop";
+			if (existing.name !== this.groupName) {
+				await api.updateAccessGroup(existing.accessGroupId, this.groupName);
+				action = "update";
+			}
+			return {
+				action,
+				id: existing.accessGroupId,
+				state: { id: existing.accessGroupId },
+				env: { vercelAccessGroupId: existing.accessGroupId },
+			};
+		}
+		const created = await api.createAccessGroup(this.groupName);
+		return {
+			action: "create",
+			id: created.accessGroupId,
+			state: { id: created.accessGroupId },
+			env: { vercelAccessGroupId: created.accessGroupId },
+		};
+	}
+	async pullEnv(
+		ctx: ReadContext<VercelCreds, { id: string }>,
+	): Promise<AccessGroupEnv> {
+		if (!ctx.state?.id) {
+			throw new InfraError(
+				ErrorCode.NotFound,
+				`vercel: access group ${this.name} not provisioned.`,
+			);
+		}
+		return { vercelAccessGroupId: ctx.state.id };
+	}
+	async deprovision(
+		ctx: ProvisionContext<VercelCreds, { id: string }>,
+	): Promise<void> {
+		if (!ctx.state?.id) return;
+		const api = await this.api(ctx);
+		await api.deleteAccessGroup(ctx.state.id);
+	}
+}
+type VercelAccessGroup_Remote = VercelAccessGroupSnapshot;
+
+// ─── Account (team scope + auth anchor) ───────────────────────────────────────
+
+export type VercelAccountOptions = AccountOptions;
+
+export class VercelAccount extends Account<VercelCreds> {
+	readonly credentialsSchema = credentialsSchema;
+	override resolveCredentials(
+		bag: Record<string, string | undefined>,
+	): unknown {
+		return { VERCEL_TOKEN: vercelTokenFromBag(bag) ?? "" };
+	}
+	cliAuth(): CliAuth {
+		return {
+			providerId: "vercel",
+			envVar: "VERCEL_TOKEN",
+			detect: ["vercel", "whoami"],
+			login: ["vercel", "login"],
+		};
+	}
+	async listScopes(credentials: VercelCreds): Promise<AccountScope[]> {
+		const apiHost = process.env.VERCEL_API_HOST ?? DEFAULT_VERCEL_API_HOST;
+		const api = new VercelApi({ token: credentials.VERCEL_TOKEN, apiHost });
+		return api.listTeams();
 	}
 }

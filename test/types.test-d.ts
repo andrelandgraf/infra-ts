@@ -4,15 +4,42 @@
  * `parseEnv` shape.
  */
 import { defineInfra, parseEnv, type Ref } from "infra-ts";
-import { NeonAuth, NeonPostgres, NeonProject } from "infra-ts/neon";
+import {
+	NeonAccount,
+	NeonAuth,
+	NeonPostgres,
+	NeonProject,
+	NeonReadReplica,
+} from "infra-ts/neon";
 import { VercelProject } from "infra-ts/vercel";
 import { UpstashRedis, UpstashVector } from "infra-ts/upstash";
 import { ResendApiKey } from "infra-ts/resend";
 import { MuxSigningKey } from "infra-ts/mux";
+import { SentryClientKey, SentryProject } from "infra-ts/sentry";
+import { WorkosOrganization } from "infra-ts/workos";
+import { SanityDataset } from "infra-ts/sanity";
+import { StatsigGate } from "infra-ts/statsig";
+import { DubDomain } from "infra-ts/dub";
+import { StripePrice, StripeWebhookEndpoint } from "infra-ts/stripe";
+import { PosthogProject } from "infra-ts/posthog";
+import { ElevenLabsAgent } from "infra-ts/elevenlabs";
+import { OpenAiServiceAccount } from "infra-ts/openai";
 
-const project = new NeonProject({ name: "app", region: "aws-us-east-1" });
+const account = new NeonAccount({ name: "personal" });
+const project = new NeonProject({
+	name: "app",
+	region: "aws-us-east-1",
+	org: account.id, // account scope ref → org
+	logicalReplication: true,
+});
 const db = new NeonPostgres({ name: "db", projectId: project.id });
 const auth = new NeonAuth({ name: "auth", projectId: project.id });
+const replica = new NeonReadReplica({
+	name: "app-replica",
+	projectId: project.id,
+	compute: { minCu: 0.25, maxCu: 2 },
+});
+const replicaUrl: Ref<string> = replica.env.readReplicaUrl;
 
 // Output refs are typed.
 const pid: Ref<string> = project.id;
@@ -40,8 +67,71 @@ const vectorUrl: Ref<string> = vector.env.upstashVectorRestUrl;
 const sendKey: Ref<string> = apiKey.env.resendSendingApiKey;
 const muxKey: Ref<string> = signingKey.env.muxPrivateKey;
 
+// ── new providers ──
+const sentryProject = new SentryProject({
+	name: "app",
+	org: "acme",
+	team: "core",
+});
+const dsn = new SentryClientKey({
+	name: "app-dsn",
+	org: "acme",
+	project: sentryProject.id,
+});
+const sentryDsn: Ref<string> = dsn.env.sentryDsn;
+
+const ph = new PosthogProject({ name: "analytics", org: "acme" });
+const phKey: Ref<string> = ph.env.posthogKey;
+
+const sa = new OpenAiServiceAccount({ name: "svc", project: "proj_123" });
+const openaiKey: Ref<string> = sa.env.openaiApiKey;
+
+const webhook = new StripeWebhookEndpoint({
+	name: "hook",
+	url: "https://example.com/stripe",
+	events: ["checkout.session.completed"],
+});
+const whSecret: Ref<string> = webhook.env.stripeWebhookSecret;
+
+const org = new WorkosOrganization({ name: "acme", domains: ["acme.com"] });
+const dataset = new SanityDataset({ name: "production", projectId: "p1" });
+const gate = new StatsigGate({ name: "new-checkout" });
+const dubDomain = new DubDomain({ name: "go.acme.com" });
+const agent = new ElevenLabsAgent({ name: "support", prompt: "be helpful" });
+
+// @ts-expect-error — Sentry `org` is required.
+new SentryProject({ name: "x", team: "core" });
+new StripePrice({
+	name: "x",
+	product: "prod_1",
+	currency: "usd",
+	// @ts-expect-error — `unitAmount` must be a number.
+	unitAmount: "10",
+});
+
 const infra = defineInfra({
-	entities: [project, db, auth, web, redis, vector, apiKey, signingKey],
+	entities: [
+		account,
+		project,
+		db,
+		auth,
+		replica,
+		web,
+		redis,
+		vector,
+		apiKey,
+		signingKey,
+		sentryProject,
+		dsn,
+		ph,
+		sa,
+		webhook,
+		org,
+		dataset,
+		gate,
+		dubDomain,
+		agent,
+	],
 });
 
 // parseEnv resolves to the namespaced env record.
@@ -63,11 +153,21 @@ export {
 	pid,
 	dbUrl,
 	jwks,
+	replicaUrl,
 	web,
 	redisUrl,
 	vectorUrl,
 	sendKey,
 	muxKey,
+	sentryDsn,
+	phKey,
+	openaiKey,
+	whSecret,
+	org,
+	dataset,
+	gate,
+	dubDomain,
+	agent,
 	infra,
 	checkParseEnv,
 };

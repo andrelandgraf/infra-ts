@@ -1,5 +1,9 @@
 import {
+	Account,
+	type AccountOptions,
+	type AccountScope,
 	type Change,
+	type CliAuth,
 	type DiffContext,
 	Entity,
 	type EntityCommon,
@@ -80,13 +84,15 @@ export interface NeonProjectOptions extends EntityCommon<
 	Record<string, never>,
 	NeonProjectState
 > {
-	/** Neon org id (`org-…`). Omit for your personal account. */
-	org?: string;
+	/** Neon org id (`org-…`) or an account ref (`account.id`). Omit for your personal account. */
+	org?: string | Ref<string>;
 	region?: string;
 	pgVersion?: number;
 	compute?: NeonComputeConfig;
 	/** Branch TTL: duration string ("7d") or seconds. */
 	ttl?: number | string;
+	/** Enable logical replication (`wal_level=logical`) for CDC / outbound replication. One-way. */
+	logicalReplication?: boolean;
 }
 interface NeonProjectState extends Record<string, unknown> {
 	id: string;
@@ -98,6 +104,7 @@ interface NeonProjectRemote {
 	projectId: string;
 	branch: NeonBranchSnapshot;
 	endpoint?: NeonEndpointSnapshot;
+	logicalReplication: boolean;
 }
 
 /** A Neon project: region, Postgres version, default-branch compute (autoscaling + scale-to-zero) and TTL. */
@@ -131,7 +138,12 @@ export class NeonProject extends NeonEntity<
 		const endpoint = endpoints.find(
 			(e) => e.type === "read_write" && e.branchId === branch.id,
 		);
-		return { projectId: project.id, branch, ...(endpoint ? { endpoint } : {}) };
+		return {
+			projectId: project.id,
+			branch,
+			...(endpoint ? { endpoint } : {}),
+			logicalReplication: project.logicalReplication,
+		};
 	}
 
 	diff(remote: NeonProjectRemote | null, _ctx: DiffContext): Change[] {
@@ -158,6 +170,14 @@ export class NeonProject extends NeonEntity<
 		if (this.ttlSeconds() !== undefined && this.expiryDrifts(remote.branch)) {
 			changes.push({ action: "update", kind: "ttl", identifier: this.name });
 		}
+		if (this.config.logicalReplication === true && !remote.logicalReplication) {
+			changes.push({
+				action: "update",
+				kind: "logical-replication",
+				identifier: this.name,
+				detail: "enable logical replication",
+			});
+		}
 		return changes;
 	}
 
@@ -178,6 +198,7 @@ export class NeonProject extends NeonEntity<
 				...(o.org ? { orgId: o.org } : {}),
 				regionId: o.region ?? DEFAULT_REGION,
 				pgVersion: o.pgVersion ?? DEFAULT_PG_VERSION,
+				...(o.logicalReplication ? { logicalReplication: true } : {}),
 			});
 			const branch =
 				created.defaultBranch ??
@@ -222,6 +243,16 @@ export class NeonProject extends NeonEntity<
 			);
 			if (action === "noop") action = "update";
 		}
+		if (o.logicalReplication === true) {
+			const project = await api.getProject(projectId);
+			if (project && !project.logicalReplication) {
+				await api.waitForProjectIdle(projectId);
+				await api.updateProjectSettings(projectId, {
+					logicalReplication: true,
+				});
+				if (action === "noop") action = "update";
+			}
+		}
 
 		return {
 			action,
@@ -263,9 +294,7 @@ export class NeonProject extends NeonEntity<
 		);
 		return Math.abs(remaining - ttl) > 60;
 	}
-	private computeDrift(
-		endpoint: NeonEndpointSnapshot | undefined,
-	): {
+	private computeDrift(endpoint: NeonEndpointSnapshot | undefined): {
 		autoscalingLimitMinCu?: number;
 		autoscalingLimitMaxCu?: number;
 		suspendTimeoutSeconds?: number;
@@ -445,6 +474,182 @@ export class NeonPostgres extends NeonEntity<
 			}),
 		]);
 		return { databaseUrl: pooled, databaseUrlUnpooled: unpooled };
+	}
+}
+
+// ─── Read replica (read-only compute endpoint) ────────────────────────────────
+
+function computeEndpointInput(c?: NeonComputeConfig): {
+	autoscalingLimitMinCu?: number;
+	autoscalingLimitMaxCu?: number;
+	suspendTimeoutSeconds?: number;
+} {
+	if (!c) return {};
+	const out: {
+		autoscalingLimitMinCu?: number;
+		autoscalingLimitMaxCu?: number;
+		suspendTimeoutSeconds?: number;
+	} = {};
+	if (c.minCu !== undefined) out.autoscalingLimitMinCu = c.minCu;
+	if (c.maxCu !== undefined) out.autoscalingLimitMaxCu = c.maxCu;
+	if (c.suspendTimeout !== undefined) {
+		out.suspendTimeoutSeconds =
+			c.suspendTimeout === false
+				? SUSPEND_NEVER
+				: parseDurationSeconds(c.suspendTimeout);
+	}
+	return out;
+}
+
+type ReadReplicaEnv = {
+	readReplicaUrl: string;
+	readReplicaUrlUnpooled: string;
+};
+export interface NeonReadReplicaOptions extends EntityCommon<
+	ReadReplicaEnv,
+	{ id: string }
+> {
+	projectId: string | Ref<string>;
+	/** Branch id to attach the replica to (default: the project's default branch). */
+	branch?: string | Ref<string>;
+	/** Autoscaling + scale-to-zero for the replica's compute. */
+	compute?: NeonComputeConfig;
+	database?: string;
+	role?: string;
+}
+
+/**
+ * A Neon **read replica**: a `read_only` compute endpoint on a branch, with its own connection
+ * string (`READ_REPLICA_URL` / `READ_REPLICA_URL_UNPOOLED`). Rename via `envNames` if your app
+ * expects a different var.
+ */
+export class NeonReadReplica extends NeonEntity<
+	NeonReadReplicaOptions,
+	ReadReplicaEnv,
+	{ id: string },
+	NeonEndpointSnapshot
+> {
+	readonly envSchema = z.object({
+		readReplicaUrl: z.string(),
+		readReplicaUrlUnpooled: z.string(),
+	}) as unknown as StandardSchemaV1<unknown, ReadReplicaEnv>;
+	readonly stateSchema = z.object({
+		id: z.string(),
+	}) as unknown as StandardSchemaV1<unknown, { id: string }>;
+	readonly envKeys = ["readReplicaUrl", "readReplicaUrlUnpooled"] as const;
+
+	private projectId(): string {
+		const id = this.config.projectId;
+		if (!id) {
+			throw new InfraError(
+				ErrorCode.NotFound,
+				`neon: ${this.name} has no projectId (is the Neon project provisioned?).`,
+			);
+		}
+		return id;
+	}
+	private async branch(api: NeonApi): Promise<NeonBranchSnapshot> {
+		const bid = this.config.branch;
+		if (bid) {
+			const branches = await api.listBranches(this.projectId());
+			const found = branches.find((b) => b.id === bid);
+			if (found) return found;
+		}
+		return this.defaultBranch(api, this.projectId());
+	}
+	private async findEndpoint(
+		api: NeonApi,
+		endpointId: string | undefined,
+	): Promise<NeonEndpointSnapshot | undefined> {
+		if (!endpointId) return undefined;
+		const endpoints = await api.listEndpoints(this.projectId());
+		return endpoints.find((e) => e.id === endpointId);
+	}
+
+	async read(
+		ctx: ReadContext<NeonCreds, { id: string }>,
+	): Promise<NeonEndpointSnapshot | null> {
+		if (!ctx.state?.id || !this.config.projectId) return null;
+		const api = this.api(ctx);
+		return (await this.findEndpoint(api, ctx.state.id)) ?? null;
+	}
+	diff(remote: NeonEndpointSnapshot | null): Change[] {
+		return remote
+			? []
+			: [{ action: "create", kind: "read-replica", identifier: this.name }];
+	}
+	async provision(
+		ctx: ProvisionContext<NeonCreds, { id: string }>,
+	): Promise<ProvisionResult<ReadReplicaEnv, { id: string }>> {
+		const api = this.api(ctx);
+		const projectId = this.projectId();
+		const branch = await this.branch(api);
+		let endpoint = await this.findEndpoint(api, ctx.state?.id);
+		let action: ProvisionResult<ReadReplicaEnv, { id: string }>["action"] =
+			"noop";
+		if (!endpoint) {
+			await api.waitForProjectIdle(projectId);
+			endpoint = await api.createEndpoint(projectId, {
+				branchId: branch.id,
+				type: "read_only",
+				...computeEndpointInput(this.config.compute),
+			});
+			action = "create";
+		}
+		const env = await this.resolveEnv(ctx, branch, endpoint.id);
+		return { action, id: endpoint.id, state: { id: endpoint.id }, env };
+	}
+	async pullEnv(
+		ctx: ReadContext<NeonCreds, { id: string }>,
+	): Promise<ReadReplicaEnv> {
+		const api = this.api(ctx);
+		const branch = await this.branch(api);
+		if (!ctx.state?.id) {
+			throw new InfraError(
+				ErrorCode.NotFound,
+				`neon: read replica ${this.name} is not provisioned yet — run \`infra apply\` first.`,
+			);
+		}
+		return this.resolveEnv(ctx, branch, ctx.state.id);
+	}
+	async deprovision(
+		ctx: ProvisionContext<NeonCreds, { id: string }>,
+	): Promise<void> {
+		if (!ctx.state?.id || !this.config.projectId) return;
+		const api = this.api(ctx);
+		await api.deleteEndpoint(this.projectId(), ctx.state.id);
+	}
+
+	private async resolveEnv(
+		ctx: { credentials: NeonCreds },
+		branch: NeonBranchSnapshot,
+		endpointId: string,
+	): Promise<ReadReplicaEnv> {
+		const api = this.api(ctx);
+		const projectId = this.projectId();
+		const [databases, roles] = await Promise.all([
+			api.listBranchDatabases(projectId, branch.id),
+			api.listBranchRoles(projectId, branch.id),
+		]);
+		const role = this.config.role ?? pickRole(roles);
+		const database = this.config.database ?? pickDatabase(databases);
+		const [pooled, unpooled] = await Promise.all([
+			api.getConnectionUri(projectId, {
+				branchId: branch.id,
+				databaseName: database,
+				roleName: role,
+				pooled: true,
+				endpointId,
+			}),
+			api.getConnectionUri(projectId, {
+				branchId: branch.id,
+				databaseName: database,
+				roleName: role,
+				pooled: false,
+				endpointId,
+			}),
+		]);
+		return { readReplicaUrl: pooled, readReplicaUrlUnpooled: unpooled };
 	}
 }
 
@@ -651,4 +856,33 @@ export class NeonDataApi extends NeonEntity<
 		return { dataApiUrl: snap.url };
 	}
 	async deprovision(): Promise<void> {}
+}
+
+// ─── Account (org scope + auth anchor) ────────────────────────────────────────
+
+export type NeonAccountOptions = AccountOptions;
+
+export class NeonAccount extends Account<NeonCreds> {
+	readonly credentialsSchema = credentialsSchema;
+	override resolveCredentials(
+		bag: Record<string, string | undefined>,
+	): unknown {
+		return { NEON_API_KEY: neonTokenFromBag(bag) ?? "" };
+	}
+	cliAuth(): CliAuth {
+		return {
+			providerId: "neon",
+			envVar: "NEON_API_KEY",
+			detect: ["neonctl", "me"],
+			login: ["neonctl", "auth"],
+		};
+	}
+	async listScopes(credentials: NeonCreds): Promise<AccountScope[]> {
+		const api = new NeonApi({
+			token: credentials.NEON_API_KEY,
+			apiHost: process.env.NEON_API_HOST ?? DEFAULT_NEON_API_HOST,
+		});
+		const orgs = await api.listOrganizations();
+		return orgs.map((o) => ({ id: o.id, name: o.name }));
+	}
 }

@@ -6,9 +6,13 @@
  */
 export {
 	UpstashQStashQueue,
+	UpstashQStashSchedule,
+	UpstashQStashTopic,
 	UpstashRedis,
 	UpstashVector,
 	type UpstashQStashQueueOptions,
+	type UpstashQStashScheduleOptions,
+	type UpstashQStashTopicOptions,
 	type UpstashRedisOptions,
 	type UpstashVectorOptions,
 } from "./lib/entities.js";

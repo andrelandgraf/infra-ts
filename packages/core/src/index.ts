@@ -34,6 +34,14 @@ export {
 export { assertUniqueIds, collectEntities, topoSort } from "./lib/graph.js";
 
 export {
+	Account,
+	type AccountOptions,
+	type AccountScope,
+	type AccountState,
+	type CliAuth,
+} from "./lib/account.js";
+
+export {
 	ErrorCode,
 	InfraError,
 	isInfraError,
@@ -57,6 +65,8 @@ export {
 } from "./lib/ref.js";
 
 export { constantCase, osKeyFor, type EnvKeyOverride } from "./lib/env-keys.js";
+
+export { mergeEnv, type EnvInput } from "./lib/env-merge.js";
 
 export {
 	createRestClient,

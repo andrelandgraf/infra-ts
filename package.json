@@ -10,7 +10,7 @@
 		"packages/*"
 	],
 	"scripts": {
-		"build": "bun run --filter '@infra-ts/core' build && bun run --filter '@infra-ts/runtime' build && bun run --filter '@infra-ts/neon' build && bun run --filter '@infra-ts/vercel' build && bun run --filter '@infra-ts/upstash' build && bun run --filter '@infra-ts/resend' build && bun run --filter '@infra-ts/mux' build && bun run --filter 'infra-ts' build",
+		"build": "bun run --filter '@infra-ts/core' build && bun run --filter '@infra-ts/runtime' build && bun run --filter '@infra-ts/neon' build && bun run --filter '@infra-ts/vercel' build && bun run --filter '@infra-ts/upstash' build && bun run --filter '@infra-ts/resend' build && bun run --filter '@infra-ts/mux' build && bun run --filter '@infra-ts/sentry' build && bun run --filter '@infra-ts/workos' build && bun run --filter '@infra-ts/sanity' build && bun run --filter '@infra-ts/statsig' build && bun run --filter '@infra-ts/dub' build && bun run --filter '@infra-ts/stripe' build && bun run --filter '@infra-ts/posthog' build && bun run --filter '@infra-ts/elevenlabs' build && bun run --filter '@infra-ts/openai' build && bun run --filter 'infra-ts' build",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"test": "bun test",
 		"test:e2e": "INFRA_E2E=1 bun test test/e2e",

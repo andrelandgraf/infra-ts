@@ -184,9 +184,6 @@ abstract class Entity<
 	readonly envNames?: Partial<Record<Extract<keyof Env, string>, string>>;
 	readonly envName?: (key: Extract<keyof Env, string>) => string;
 
-	/** Optional: explicit ordering deps with no data flow (most deps are inferred via refs). §6 */
-	readonly deps?: Entity[];
-
 	/** Optional: imperative side-effect hooks bracketing provision/checkout. §13 */
 	readonly hooks?: EntityHooks<Env, State>;
 
@@ -216,6 +213,13 @@ abstract class Entity<
 
 	/** Typed deferred references to this entity's env, e.g. `db.env.databaseUrl: Ref<string>`. */
 	get env(): { readonly [K in keyof Env]: Ref<Env[K]> };
+
+	/**
+	 * This entity's whole env as an **OS-keyed** bundle of refs (applies `envNames`/`envName`),
+	 * ready to spread into a consumer's `env`, e.g. `{ ...db.toEnv() }` → `{ DATABASE_URL: Ref, … }`.
+	 * Spreading carries refs, so it also creates the dependency edge. §6.3, §9.4
+	 */
+	toEnv(): Record<string, Ref<string>>;
 }
 ```
 
@@ -300,12 +304,13 @@ type Resolved<T> =
 
 ## 6. Composition & dependencies (the graph)
 
-Entities form a DAG. There are **three ways** to express a relationship; they all compile to the
-**same graph**, and you should reach for them in this order:
+Entities form a DAG. There are a few ways to express a relationship; they all compile to the
+**same graph**. Reach for them in this order:
 
-### 6.1 Implicit deps via typed refs (the 90% path)
+### 6.1 Implicit edges via typed refs (the 90% path)
 
-Reference another entity's output. The edge is inferred automatically, and the value is typed.
+Reference another entity's output (`entity.id`, `entity.env.field`). The edge is inferred
+automatically, and the value is typed.
 
 ```ts
 const project = new Project({ name: "todo-app", region: "aws-us-east-1" });
@@ -325,18 +330,33 @@ const fn = new Function({
 });
 ```
 
-### 6.2 Explicit ordering via `deps` (escape hatch)
+### 6.2 Bulk env wiring via `toEnv()` spread
 
-Only when you need ordering with **no value flowing** (e.g. "run a migration after the DB exists,
-but the function doesn't read a DB output directly"):
+When a consumer wants **all** of another entity's env (not one field), spread `entity.toEnv()` —
+an OS-keyed bundle of refs. Because the values are refs, the spread also **creates the edge**:
 
 ```ts
-const fn = new Function({
-	name: "todo-api",
-	source: "src/api/index.ts",
-	deps: [db], // provision db (and its hooks) before fn
+const web = new VercelProject({
+	name: "todo-web",
+	env: {
+		...db.toEnv(), // → { DATABASE_URL, DATABASE_URL_UNPOOLED } (edges db → web)
+		...auth.toEnv(), // → { NEON_AUTH_BASE_URL, NEON_AUTH_JWKS_URL }
+		ANALYTICS_DATABASE_URL: analytics.env.databaseUrl, // single-field grab / rename
+	},
 });
 ```
+
+Object spread is plain JS: **duplicate keys silently last-win**. If you want a collision to throw,
+use `mergeEnv` (§9.4) instead of spread:
+
+```ts
+env: mergeEnv(db.toEnv(), analytics.toEnv()); // throws if both expose DATABASE_URL
+```
+
+> **No standalone ordering option (yet).** Edges are inferred **only** from refs (`entity.id`,
+> `entity.env.*`, `entity.toEnv()`). If you ever need ordering with no data flowing, reference any
+> output of the dependency (even just `.id`). A dedicated ordering option can be re-added later if a
+> real need emerges.
 
 ### 6.3 Nesting (grouping + constraints)
 
@@ -364,7 +384,7 @@ export default defineInfra({ entities: [project] }); // children registered tran
 - **Cycles are a hard error** ("two entities can't depend on each other") — detected before any
   I/O, naming the cycle.
 - Independent entities (no path between them) **may be provisioned in parallel**; dependents wait
-  for their dependencies' `provision` (and `provision.after` hooks) to complete.
+  for their dependencies' `provision` (and `afterApply` hooks) to complete.
 
 ---
 
@@ -471,6 +491,50 @@ class Postgres extends Entity<{ NEON_API_KEY: string }, …> {
 - **Credentials are never written to `.infra` state** (§10) or echoed in logs.
 - Credentials are **environment-scoped** — prod and preview can use different keys/orgs.
 
+### 8.3 Accounts — provider scope + linking
+
+Before infra-ts can provision anything it needs to know **which account/org/team to provision
+into** — base identity that exists _before_ the first `apply` and is **per-developer**, so it must
+not be hardcoded in `infra.ts`. This is modeled as an **Account node**: a first-class entity that
+owns a provider's auth anchor and scope.
+
+```ts
+import { NeonAccount, NeonProject, NeonPostgres } from "@infra-ts/neon";
+
+const personal = new NeonAccount({ name: "personal" });
+const work = new NeonAccount({ name: "work" });
+
+const project = new NeonProject({ name: "app", org: personal.id }); // org from the account
+const db = new NeonPostgres({ name: "app-db", projectId: project.id });
+const tools = new NeonProject({ name: "tools", org: work.id });
+
+export default defineInfra({ entities: [personal, work, project, db, tools] });
+```
+
+An Account:
+
+- **Is a named entity** (`new NeonAccount({ name })`) — the `name` is its identifier and the key
+  under which its scope lives in `.infra.<env>` (`entities.personal = { scopeId: "org-…" }`).
+  Two accounts ⇒ two names; duplicate names are the usual hard error.
+- **Exposes `account.id`** = the bound scope id (e.g. a Neon `org-…` / Vercel `team_…`). Entities
+  wire it where they'd otherwise hardcode an org/team: `org: personal.id`. That ref creates the
+  edge, so the account resolves first.
+- **Is bound by `infra-ts link`, not `apply`.** `link` lists your orgs/teams (via the authed CLI /
+  REST), you pick one, and the id is written to `.infra.<env>` under the account name. `apply`
+  reads it; the account's `provision` **creates no remote resource** — it just verifies a scope is
+  bound (else errors _“run `infra-ts link <name>`”_) and never deletes the org on `destroy`.
+- **Anchors auth.** `infra-ts login` authenticates the account's provider (CLI OAuth passthrough
+  for Neon/Vercel; see §8.1 fallback). Credentials resolve per account: explicit option → creds
+  store keyed by account name → provider env var → CLI cache.
+
+**Multi-account credentials.** The common case is _one login, many orgs_ — entities share the
+cached token and differ only by `account.id`, which works out of the box. Two genuinely separate
+logins need per-account tokens (`new NeonAccount({ name: "work", apiKey: process.env.WORK_NEON_API_KEY })`),
+since a provider CLI holds a single cached session.
+
+**Auto-bind.** When exactly one account of a provider is present, entities may omit the scope ref;
+with two or more, it becomes required (else a clear error names the candidates).
+
 ---
 
 ## 9. Environment variables (typed env)
@@ -510,12 +574,48 @@ return `{ databaseUrl: … }`. Bijective ⇒ round-trips.
 
 ### 9.3 Collisions
 
-After applying every entity's mapping, the engine **detects duplicate OS keys across all
-entities and crashes loud**, naming the conflicting entities. The fix is the rename override
-(§9.2) — so the rename feature _is_ the collision remedy.
+Collisions are handled at **two independent layers**:
+
+1. **Automatic layer — the `.env.<env>` union.** When the engine writes every entity's own env to
+   `.env.<env>`, it **detects duplicate OS keys across all entities and crashes loud**, naming the
+   conflicting entities. You didn't ask for the overlap, so it's an error. The fix is the rename
+   override (§9.2) — so the rename feature _is_ the collision remedy.
+2. **Explicit layer — a consumer's `env`.** When you build a consumer's `env` yourself, you own the
+   merge. A plain object spread (`{ ...a.toEnv(), ...b.toEnv() }`) is JS — **duplicate keys silently
+   last-win**. Opt into a loud merge with `mergeEnv` (§9.4).
 
 > Authoring note: avoid acronym **runs** in logical keys (`databaseUrl` ✅; `databaseURL` →
 > messy CONSTANT_CASE). Use the override for anything unusual.
+
+### 9.4 Spreading an entity's env into a consumer (`toEnv` + `mergeEnv`)
+
+`entity.toEnv()` returns the entity's whole env as an **OS-keyed bundle of refs** (applying any
+`envNames`/`envName` rename), so you can spread it straight into a consumer's `env`:
+
+```ts
+import { mergeEnv } from "infra-ts";
+
+new VercelProject({
+	name: "web",
+	env: {
+		...db.toEnv(), // { DATABASE_URL: Ref, DATABASE_URL_UNPOOLED: Ref }
+		...auth.toEnv(), // { NEON_AUTH_BASE_URL: Ref, NEON_AUTH_JWKS_URL: Ref }
+		CUSTOM_URL: db.env.databaseUrl, // single-field grab (camelCase typed accessor)
+	},
+});
+```
+
+- `entity.toEnv()` → spread the **whole** entity (OS keys). Carries refs ⇒ creates the edge.
+- `entity.env.field` → grab **one** field by its logical name (typed `Ref`), e.g. to rename it.
+- `mergeEnv(...maps)` → merge OS-keyed maps and **throw on any overlapping key** (the loud
+  alternative to silent spread):
+
+```ts
+env: mergeEnv(db.toEnv(), analytics.toEnv()); // ✗ throws if both define DATABASE_URL
+```
+
+There is intentionally **no** `prefix`/`rename`/`only` DSL: it's just TypeScript — spread,
+destructure, and override with the single-field accessor.
 
 ---
 
@@ -645,32 +745,37 @@ env sets are static per entity (§7.2), the validated shape is stable across env
 
 ## 13. Hooks
 
-Imperative side effects bracketing the real `provision` / `checkout` commands. **Hooks never run
-during `plan` / `status`** — that's what keeps those read-only and deterministic. A hook is a
-function or a shell command (string / string[]); shell hooks run non-interactively (`CI=1`,
+Imperative side effects bracketing the CLI commands you run. Hook names mirror the commands
+one-to-one (`apply`, `checkout`, `destroy`), each with a `before*` and `after*` phase. **Hooks
+never run during `plan` / `status`** — that's what keeps those read-only and deterministic. A hook
+is a function or a shell command (string / string[]); shell hooks run non-interactively (`CI=1`,
 stdin detached) with the resolved env injected.
 
 ```ts
 interface EntityHooks<Env, State> {
-	provision?: {
-		/** Before the entity is provisioned. Gets at least the environment. */
-		before?: Hook<{ environment: string }>;
-		/** After provision + env resolution. Gets the full provision result. */
-		after?: Hook<{
-			environment: string;
-			action: ChangeAction;
-			state: State;
-			env: Env;
-		}>;
-	};
-	checkout?: {
-		before?: Hook<{ environment: string }>;
-		after?: Hook<{ environment: string; env: Env }>;
-	};
+	/** Before this entity is provisioned during `infra apply`. */
+	beforeApply?: Hook<{ environment: string }>;
+	/** After provision + env resolution. Gets the full provision result (typed env). */
+	afterApply?: Hook<{
+		environment: string;
+		action: ChangeAction;
+		state: State;
+		env: Env;
+	}>;
+	/** Around `infra checkout` (pulling typed env from the live remote). */
+	beforeCheckout?: Hook<{ environment: string }>;
+	afterCheckout?: Hook<{ environment: string; env: Env }>;
+	/** Around `infra destroy` (deprovision). */
+	beforeDestroy?: Hook<{ environment: string }>;
+	afterDestroy?: Hook<{ environment: string }>;
 }
 
 type Hook<Ctx> = ((ctx: Ctx) => void | Promise<void>) | string | string[];
 ```
+
+The keys are **flat and named after the CLI verbs** (`infra apply` ⇒ `beforeApply`/`afterApply`),
+so there's no command-to-event mapping to learn. (There is intentionally no `.on()` registration —
+hooks are declarative data on the entity, not imperatively registered callbacks.)
 
 Canonical example — migrate right after the DB is provisioned, ordered before dependents:
 
@@ -679,16 +784,17 @@ const db = new Postgres({
 	name: "todo-db",
 	projectId: project.id,
 	hooks: {
-		provision: {
-			after: async ({ env }) => {
-				await drizzleMigrate(env.databaseUrlUnpooled); // typed env
-			},
+		afterApply: async ({ env }) => {
+			await drizzleMigrate(env.databaseUrlUnpooled); // typed env
 		},
 	},
 });
 
-const fn = new Function({ name: "todo-api", source: "…", deps: [db] });
-// `deps: [db]` ⇒ db.provision + db.hooks.provision.after run before fn is provisioned.
+const fn = new Function({
+	name: "todo-api",
+	source: "…",
+	env: { DATABASE_URL: db.env.databaseUrl }, // ref ⇒ edge: db.provision + db.afterApply run first
+});
 ```
 
 ---
@@ -740,7 +846,7 @@ For every command, the engine:
    - cycles → error;
    - compute each entity's OS env keys (default + overrides) → duplicate OS keys across entities →
      error.
-5. **Topologically sort** by edges (refs + `deps` + nesting).
+5. **Topologically sort** by edges (inferred from refs + nesting).
 6. **Load inputs**: `loadEnv(environment)`; build per-entity credentials (merge + validate).
 7. **Read state** `.infra.<environment>`; **apply `renames`** (re-key).
 8. **Per entity, in topo order** (independent entities may run in parallel):
@@ -748,7 +854,7 @@ For every command, the engine:
    - **`plan` / `status`**: `read` → `diff` (or render remote); collect `Change[]`. _No mutations,
      no hooks, no state writes._
    - **`apply`**: run `provision.before` hook → `provision(ctx)` → persist returned `state` to
-     `.infra.<env>` immediately → record `env` outputs for dependents → run `provision.after` hook.
+     `.infra.<env>` immediately → record `env` outputs for dependents → run `afterApply` hook.
    - **`destroy` / prune**: `deprovision` in reverse order; remove from state.
 9. **Write env**: merge every entity's `env` → OS keys → `.env.<environment>` (merge-in-place,
    preserving unmanaged lines). Skipped for `plan` / `status`.
@@ -763,16 +869,21 @@ State is written incrementally (step 8) so a failure never leaks an untracked re
 
 Everything is also an SDK function (`import { apply, plan, … } from "infra-ts"`).
 
-| Command                                    | Description                                                      |
-| ------------------------------------------ | ---------------------------------------------------------------- |
-| `infra plan [--env e]`                     | Dry run: the changes `apply` would make. No mutations, no hooks. |
-| `infra apply [--env e] [--prune]`          | Reconcile remote to `infra.ts`; write `.env.<e>`; run hooks.     |
-| `infra status [--env e]`                   | Live state of every entity + git facts. Read-only.               |
-| `infra checkout [--env e] [--ignore-diff]` | Pull typed `.env.<e>` from remote + drift guard.                 |
-| `infra destroy [--env e] [-y]`             | Deprovision all entities (reverse order). Destructive.           |
-| `infra run [--env e] -- <cmd>`             | Resolve env and inject into a child process (nothing written).   |
+| Command                                    | Description                                                         |
+| ------------------------------------------ | ------------------------------------------------------------------- |
+| `infra login [provider…]`                  | Authenticate each account's provider (CLI OAuth passthrough). §8.3  |
+| `infra link [account…] [--env e]`          | Pick an org/team per account; write the scope to `.infra.<e>`. §8.3 |
+| `infra plan [--env e]`                     | Dry run: the changes `apply` would make. No mutations, no hooks.    |
+| `infra apply [--env e] [--prune]`          | Reconcile remote to `infra.ts`; write `.env.<e>`; run hooks.        |
+| `infra status [--env e]`                   | Live state of every entity. Read-only.                              |
+| `infra checkout [--env e] [--ignore-diff]` | Pull typed `.env.<e>` from remote + drift guard.                    |
+| `infra destroy [--env e] [-y]`             | Deprovision all entities (reverse order). Destructive.              |
+| `infra run [--env e] -- <cmd>`             | Resolve env and inject into a child process (nothing written).      |
 
 Global: `--env`, `--json`, `--only <ids…>`, `--cwd`, `--config`, `--verbose`.
+
+The typical first-run flow is **`infra login` → `infra link` → `infra apply`**: authenticate, bind
+each account to an org/team, then provision.
 
 ---
 
@@ -870,7 +981,7 @@ const project = new Project({
 export default defineInfra({ entities: [project] });
 ```
 
-### 19.4 Code deployment with deps + a migration hook
+### 19.4 Code deployment wired by refs + a migration hook
 
 ```ts
 import { Redis } from "@infra-ts/upstash";
@@ -883,9 +994,7 @@ const db = new Postgres({
 	name: "todo-db",
 	projectId: project.id,
 	hooks: {
-		provision: {
-			after: async ({ env }) => drizzleMigrate(env.databaseUrlUnpooled),
-		},
+		afterApply: async ({ env }) => drizzleMigrate(env.databaseUrlUnpooled),
 	},
 });
 
@@ -894,10 +1003,10 @@ const api = new Function({
 	projectId: project.id,
 	source: "src/api/index.ts",
 	env: {
-		DATABASE_URL: db.env.databaseUrl, // typed ref → edge + value
-		REDIS_URL: cache.env.redisUrl, // typed ref → edge + value
+		// typed refs → edges + values; db's afterApply migration runs before this deploy
+		DATABASE_URL: db.env.databaseUrl,
+		REDIS_URL: cache.env.redisUrl,
 	},
-	deps: [db], // ensure db migration (after-hook) runs before deploy
 });
 
 export default defineInfra({ entities: [project, cache, db, api] });

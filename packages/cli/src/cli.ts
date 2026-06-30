@@ -10,12 +10,17 @@ import {
 	type Logger,
 } from "@infra-ts/core";
 import {
+	accountCredentials,
 	apply,
 	checkout,
+	collectAccounts,
 	destroy,
+	link,
 	loadConfig,
 	type LoadedConfig,
+	login,
 	plan,
+	resolveEnvironment,
 	status,
 	toEntries,
 } from "@infra-ts/runtime";
@@ -49,6 +54,16 @@ program
 	.command("init")
 	.description("scaffold an infra.ts config in the current directory")
 	.action(() => withErrors(cmdInit));
+program
+	.command("login")
+	.description("authenticate each account's provider (CLI OAuth passthrough)")
+	.argument("[providers...]", "limit to these provider ids (e.g. neon vercel)")
+	.action((providers: string[]) => withErrors(() => cmdLogin(providers)));
+program
+	.command("link")
+	.description("pick an org/team per account; write the scope to .infra.<env>")
+	.argument("[accounts...]", "limit to these account names")
+	.action((accounts: string[]) => withErrors(() => cmdLink(accounts)));
 program
 	.command("plan")
 	.description("show the changes apply would make (dry run; no mutations)")
@@ -121,6 +136,70 @@ async function cmdInit(): Promise<void> {
 	info(
 		"Next: edit your entities, then run `infra-ts plan` and `infra-ts apply`.",
 	);
+}
+
+async function cmdLogin(providers: string[]): Promise<void> {
+	const f = flags();
+	const loaded = await load(f);
+	const results = await login(loaded.infra, {
+		...(providers.length > 0 ? { only: providers } : {}),
+		logger: consoleLogger,
+	});
+	if (f.json) return printJson(results);
+	if (results.length === 0) {
+		info(chalk.dim("No accounts in this config — nothing to log in to."));
+		return;
+	}
+	for (const r of results) {
+		const mark =
+			r.status === "already" || r.status === "logged-in"
+				? chalk.green("✓")
+				: chalk.red("✖");
+		info(`${mark} ${r.provider} (${r.accounts.join(", ")}) — ${r.status}`);
+	}
+}
+
+async function cmdLink(names: string[]): Promise<void> {
+	const f = flags();
+	const loaded = await load(f);
+	const environment = resolveEnvironment(loaded.infra, {
+		...(f.env ? { environment: f.env } : {}),
+	});
+	const accounts = collectAccounts(loaded.infra).filter(
+		(a) => names.length === 0 || names.includes(a.name),
+	);
+	if (accounts.length === 0) {
+		info(chalk.dim("No accounts to link in this config."));
+		return;
+	}
+	const scopes: Record<string, string> = {};
+	for (const account of accounts) {
+		const creds = accountCredentials(loaded.infra, account, environment);
+		const options = await account.listScopes(creds);
+		if (options.length === 0) {
+			info(
+				chalk.yellow(`No scopes available for "${account.name}" — skipping.`),
+			);
+			continue;
+		}
+		const picked = await choose(
+			`Link "${account.name}" to:`,
+			options.map((o) => ({
+				label: `${o.name}  ${chalk.dim(o.id)}`,
+				value: o.id,
+			})),
+		);
+		if (picked) scopes[account.name] = picked;
+	}
+	if (Object.keys(scopes).length === 0) return;
+	const results = await link(loaded.infra, {
+		rootDir: loaded.rootDir,
+		environment,
+		scopes,
+	});
+	for (const r of results) {
+		info(chalk.green(`Linked ${r.account} → ${r.scopeId} (${environment})`));
+	}
 }
 
 async function cmdPlan(): Promise<void> {
@@ -267,6 +346,29 @@ async function confirm(prompt: string): Promise<boolean> {
 	const rl = createInterface({ input: process.stdin, output: process.stdout });
 	try {
 		return /^y(es)?$/i.test((await rl.question(prompt)).trim());
+	} finally {
+		rl.close();
+	}
+}
+async function choose(
+	prompt: string,
+	options: { label: string; value: string }[],
+): Promise<string | undefined> {
+	if (options.length === 1) return options[0]?.value;
+	if (!process.stdin.isTTY) {
+		throw new Error(
+			`${prompt} — multiple options but no TTY to choose. Pass \`scope\` on the account or run interactively.`,
+		);
+	}
+	const rl = createInterface({ input: process.stdin, output: process.stdout });
+	try {
+		info(chalk.bold(prompt));
+		options.forEach((o, i) =>
+			info(`  ${chalk.cyan(String(i + 1))}. ${o.label}`),
+		);
+		const answer = (await rl.question("  # ")).trim();
+		const idx = Number.parseInt(answer, 10) - 1;
+		return options[idx]?.value;
 	} finally {
 		rl.close();
 	}

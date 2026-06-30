@@ -6,9 +6,11 @@
  */
 export {
 	MuxLiveStream,
+	MuxLiveStreamSimulcastTarget,
 	MuxPlaybackRestriction,
 	MuxSigningKey,
 	type MuxLiveStreamOptions,
+	type MuxLiveStreamSimulcastTargetOptions,
 	type MuxPlaybackRestrictionOptions,
 	type MuxSigningKeyOptions,
 } from "./lib/entities.js";

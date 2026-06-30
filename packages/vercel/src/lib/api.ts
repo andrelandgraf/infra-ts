@@ -105,6 +105,17 @@ export class VercelApi {
 		return { ...(this.teamId ? { teamId: this.teamId } : {}), ...extra };
 	}
 
+	/** List the teams the authenticated user belongs to (for `infra link`). */
+	async listTeams(): Promise<{ id: string; name: string }[]> {
+		const res = await this.rest.get<{
+			teams?: { id: string; name?: string; slug?: string }[];
+		}>("/v2/teams");
+		return (res.teams ?? []).map((t) => ({
+			id: t.id,
+			name: t.name ?? t.slug ?? t.id,
+		}));
+	}
+
 	/** Resolve a team slug to its team id. Returns `null` when no team matches. */
 	async resolveTeamId(slug: string): Promise<string | null> {
 		const res = await this.rest.get<{ id?: string } | null>("/v2/teams", {
@@ -327,6 +338,118 @@ export class VercelApi {
 			allowStatuses: [404],
 		});
 	}
+
+	// ─── DNS records ────────────────────────────────────────────────────────
+
+	async listDnsRecords(domain: string): Promise<VercelDnsRecordSnapshot[]> {
+		const res = await this.rest.get<{ records?: VercelDnsRecordSnapshot[] }>(
+			`/v4/domains/${domain}/records`,
+			{ query: this.q() },
+		);
+		return res.records ?? [];
+	}
+	async createDnsRecord(
+		domain: string,
+		input: { type: string; name: string; value: string; ttl?: number },
+	): Promise<{ uid: string }> {
+		return this.rest.post<{ uid: string }>(`/v2/domains/${domain}/records`, {
+			query: this.q(),
+			body: {
+				type: input.type,
+				name: input.name,
+				value: input.value,
+				...(input.ttl !== undefined ? { ttl: input.ttl } : {}),
+			},
+		});
+	}
+	async deleteDnsRecord(domain: string, recordId: string): Promise<void> {
+		await this.rest.delete(`/v2/domains/${domain}/records/${recordId}`, {
+			query: this.q(),
+			allowStatuses: [404],
+		});
+	}
+
+	// ─── Log drains (configurable) ──────────────────────────────────────────
+
+	async listLogDrains(): Promise<VercelLogDrainSnapshot[]> {
+		const res = await this.rest.get<VercelLogDrainSnapshot[]>(
+			"/v1/log-drains",
+			{
+				query: this.q(),
+			},
+		);
+		return res ?? [];
+	}
+	async createLogDrain(input: {
+		name: string;
+		url: string;
+		deliveryFormat: "json" | "ndjson" | "syslog";
+		sources: string[];
+		projectIds?: string[];
+	}): Promise<VercelLogDrainSnapshot> {
+		return this.rest.post<VercelLogDrainSnapshot>("/v1/log-drains", {
+			query: this.q(),
+			body: {
+				name: input.name,
+				url: input.url,
+				deliveryFormat: input.deliveryFormat,
+				sources: input.sources,
+				...(input.projectIds ? { projectIds: input.projectIds } : {}),
+			},
+		});
+	}
+	async deleteLogDrain(id: string): Promise<void> {
+		await this.rest.delete(`/v1/log-drains/${id}`, {
+			query: this.q(),
+			allowStatuses: [404],
+		});
+	}
+
+	// ─── Access groups ──────────────────────────────────────────────────────
+
+	async getAccessGroup(id: string): Promise<VercelAccessGroupSnapshot | null> {
+		return this.rest.get<VercelAccessGroupSnapshot | null>(
+			`/v1/access-groups/${id}`,
+			{
+				query: this.q(),
+				allowStatuses: [404],
+			},
+		);
+	}
+	async createAccessGroup(name: string): Promise<VercelAccessGroupSnapshot> {
+		return this.rest.post<VercelAccessGroupSnapshot>("/v1/access-groups", {
+			query: this.q(),
+			body: { name },
+		});
+	}
+	async updateAccessGroup(id: string, name: string): Promise<void> {
+		await this.rest.post(`/v1/access-groups/${id}`, {
+			query: this.q(),
+			body: { name },
+		});
+	}
+	async deleteAccessGroup(id: string): Promise<void> {
+		await this.rest.delete(`/v1/access-groups/${id}`, {
+			query: this.q(),
+			allowStatuses: [404],
+		});
+	}
+}
+
+export interface VercelDnsRecordSnapshot {
+	id: string;
+	type: string;
+	name: string;
+	value: string;
+}
+export interface VercelLogDrainSnapshot {
+	id: string;
+	name?: string;
+	url: string;
+}
+export interface VercelAccessGroupSnapshot {
+	accessGroupId: string;
+	name: string;
 }
 
 type RawProject = {

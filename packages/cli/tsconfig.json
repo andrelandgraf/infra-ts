@@ -11,6 +11,15 @@
 			"@infra-ts/upstash": ["../upstash/src/index.ts"],
 			"@infra-ts/resend": ["../resend/src/index.ts"],
 			"@infra-ts/mux": ["../mux/src/index.ts"],
+			"@infra-ts/sentry": ["../sentry/src/index.ts"],
+			"@infra-ts/workos": ["../workos/src/index.ts"],
+			"@infra-ts/sanity": ["../sanity/src/index.ts"],
+			"@infra-ts/statsig": ["../statsig/src/index.ts"],
+			"@infra-ts/dub": ["../dub/src/index.ts"],
+			"@infra-ts/stripe": ["../stripe/src/index.ts"],
+			"@infra-ts/posthog": ["../posthog/src/index.ts"],
+			"@infra-ts/elevenlabs": ["../elevenlabs/src/index.ts"],
+			"@infra-ts/openai": ["../openai/src/index.ts"],
 			"@infra-ts/runtime": ["../runtime/src/index.ts"]
 		}
 	},

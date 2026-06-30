@@ -8,6 +8,15 @@
 			"@infra-ts/upstash": ["../upstash/dist/index.d.ts"],
 			"@infra-ts/resend": ["../resend/dist/index.d.ts"],
 			"@infra-ts/mux": ["../mux/dist/index.d.ts"],
+			"@infra-ts/sentry": ["../sentry/dist/index.d.ts"],
+			"@infra-ts/workos": ["../workos/dist/index.d.ts"],
+			"@infra-ts/sanity": ["../sanity/dist/index.d.ts"],
+			"@infra-ts/statsig": ["../statsig/dist/index.d.ts"],
+			"@infra-ts/dub": ["../dub/dist/index.d.ts"],
+			"@infra-ts/stripe": ["../stripe/dist/index.d.ts"],
+			"@infra-ts/posthog": ["../posthog/dist/index.d.ts"],
+			"@infra-ts/elevenlabs": ["../elevenlabs/dist/index.d.ts"],
+			"@infra-ts/openai": ["../openai/dist/index.d.ts"],
 			"@infra-ts/runtime": ["../runtime/dist/index.d.ts"]
 		}
 	}
