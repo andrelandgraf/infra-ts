@@ -26,6 +26,8 @@ import {
 	status,
 	toEntries,
 } from "@infra-ts/runtime";
+import * as prompts from "@clack/prompts";
+import type { Option } from "@clack/prompts";
 import chalk from "chalk";
 import { Command } from "commander";
 
@@ -216,13 +218,11 @@ async function cmdLink(names: string[]): Promise<void> {
 			);
 			continue;
 		}
-		const picked = await choose(
-			`Link "${account.name}" to:`,
-			options.map((o) => ({
-				label: `${o.name}  ${chalk.dim(o.id)}`,
-				value: o.id,
-			})),
-		);
+		const picked = await chooseScope({
+			accountName: account.name,
+			providerId: account.cliAuth().providerId,
+			options,
+		});
 		if (picked) scopes[account.name] = picked;
 	}
 	if (Object.keys(scopes).length === 0) return;
@@ -504,28 +504,48 @@ async function confirm(prompt: string): Promise<boolean> {
 		rl.close();
 	}
 }
+async function chooseScope(args: {
+	accountName: string;
+	providerId: string;
+	options: { id: string; name: string }[];
+}): Promise<string | undefined> {
+	if (args.options.length === 1) return args.options[0]?.id;
+	return choose(
+		`Link ${args.providerId} scope "${args.accountName}"`,
+		args.options.map((option) => ({
+			label: option.name,
+			hint: option.id,
+			value: option.id,
+		})),
+	);
+}
 async function choose(
-	prompt: string,
-	options: { label: string; value: string }[],
+	message: string,
+	options: { label: string; value: string; hint?: string }[],
 ): Promise<string | undefined> {
-	if (options.length === 1) return options[0]?.value;
 	if (!process.stdin.isTTY) {
 		throw new Error(
-			`${prompt} — multiple options but no TTY to choose. Pass \`scope\` on the account or run interactively.`,
+			`${message}: multiple options are available but no interactive TTY is attached. Run \`infra link\` interactively or pass \`scope\` on the scope entity.`,
 		);
 	}
-	const rl = createInterface({ input: process.stdin, output: process.stdout });
-	try {
-		info(chalk.bold(prompt));
-		options.forEach((o, i) =>
-			info(`  ${chalk.cyan(String(i + 1))}. ${o.label}`),
-		);
-		const answer = (await rl.question("  # ")).trim();
-		const idx = Number.parseInt(answer, 10) - 1;
-		return options[idx]?.value;
-	} finally {
-		rl.close();
+	const promptOptions: Option<string>[] = options.map((option) => {
+		const promptOption: Option<string> = {
+			label: option.label,
+			value: option.value,
+		};
+		if (option.hint) promptOption.hint = option.hint;
+		return promptOption;
+	});
+	const selected = await prompts.select<string>({
+		message,
+		options: promptOptions,
+	});
+	if (prompts.isCancel(selected)) {
+		prompts.cancel("Link cancelled");
+		process.exitCode = 130;
+		return undefined;
 	}
+	return selected;
 }
 async function withErrors(fn: () => Promise<void>): Promise<void> {
 	try {

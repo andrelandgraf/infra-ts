@@ -94,6 +94,7 @@
 		"typecheck": "tsc -p tsconfig.json --noEmit"
 	},
 	"dependencies": {
+		"@clack/prompts": "^0.9.1",
 		"chalk": "^5.4.1",
 		"commander": "^13.1.0",
 		"esbuild": "^0.24.0",

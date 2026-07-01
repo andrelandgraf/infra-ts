@@ -13,11 +13,13 @@
     },
     "packages/cli": {
       "name": "infra-ts",
-      "version": "0.1.0",
+      "version": "0.4.1",
       "bin": {
-        "infra-ts": "./dist/cli.js",
+        "infra-ts": "dist/cli.js",
+        "infra": "dist/cli.js",
       },
       "dependencies": {
+        "@clack/prompts": "^0.9.1",
         "chalk": "^5.4.1",
         "commander": "^13.1.0",
         "esbuild": "^0.24.0",
@@ -25,57 +27,57 @@
         "jiti": "^2.7.0",
       },
       "devDependencies": {
-        "@infra-ts/core": "workspace:*",
-        "@infra-ts/dub": "workspace:*",
-        "@infra-ts/elevenlabs": "workspace:*",
-        "@infra-ts/mux": "workspace:*",
-        "@infra-ts/neon": "workspace:*",
-        "@infra-ts/openai": "workspace:*",
-        "@infra-ts/posthog": "workspace:*",
-        "@infra-ts/resend": "workspace:*",
-        "@infra-ts/runtime": "workspace:*",
-        "@infra-ts/sanity": "workspace:*",
-        "@infra-ts/sentry": "workspace:*",
-        "@infra-ts/statsig": "workspace:*",
-        "@infra-ts/stripe": "workspace:*",
-        "@infra-ts/upstash": "workspace:*",
-        "@infra-ts/vercel": "workspace:*",
-        "@infra-ts/workos": "workspace:*",
+        "@infra-ts/core": "0.4.1",
+        "@infra-ts/dub": "0.4.1",
+        "@infra-ts/elevenlabs": "0.4.1",
+        "@infra-ts/mux": "0.4.1",
+        "@infra-ts/neon": "0.4.1",
+        "@infra-ts/openai": "0.4.1",
+        "@infra-ts/posthog": "0.4.1",
+        "@infra-ts/resend": "0.4.1",
+        "@infra-ts/runtime": "0.4.1",
+        "@infra-ts/sanity": "0.4.1",
+        "@infra-ts/sentry": "0.4.1",
+        "@infra-ts/statsig": "0.4.1",
+        "@infra-ts/stripe": "0.4.1",
+        "@infra-ts/upstash": "0.4.1",
+        "@infra-ts/vercel": "0.4.1",
+        "@infra-ts/workos": "0.4.1",
       },
     },
     "packages/core": {
       "name": "@infra-ts/core",
-      "version": "0.1.0",
+      "version": "0.4.1",
     },
     "packages/dub": {
       "name": "@infra-ts/dub",
-      "version": "0.1.0",
+      "version": "0.4.1",
       "dependencies": {
-        "@infra-ts/core": "workspace:*",
+        "@infra-ts/core": "0.4.1",
         "zod": "^4.0.0",
       },
     },
     "packages/elevenlabs": {
       "name": "@infra-ts/elevenlabs",
-      "version": "0.1.0",
+      "version": "0.4.1",
       "dependencies": {
-        "@infra-ts/core": "workspace:*",
+        "@infra-ts/core": "0.4.1",
         "zod": "^4.0.0",
       },
     },
     "packages/mux": {
       "name": "@infra-ts/mux",
-      "version": "0.1.0",
+      "version": "0.4.1",
       "dependencies": {
-        "@infra-ts/core": "workspace:*",
+        "@infra-ts/core": "0.4.1",
         "zod": "^4.0.0",
       },
     },
     "packages/neon": {
       "name": "@infra-ts/neon",
-      "version": "0.1.0",
+      "version": "0.4.1",
       "dependencies": {
-        "@infra-ts/core": "workspace:*",
+        "@infra-ts/core": "0.4.1",
         "esbuild": "^0.24.0",
         "fflate": "^0.8.2",
         "zod": "^4.0.0",
@@ -83,94 +85,98 @@
     },
     "packages/openai": {
       "name": "@infra-ts/openai",
-      "version": "0.1.0",
+      "version": "0.4.1",
       "dependencies": {
-        "@infra-ts/core": "workspace:*",
+        "@infra-ts/core": "0.4.1",
         "zod": "^4.0.0",
       },
     },
     "packages/posthog": {
       "name": "@infra-ts/posthog",
-      "version": "0.1.0",
+      "version": "0.4.1",
       "dependencies": {
-        "@infra-ts/core": "workspace:*",
+        "@infra-ts/core": "0.4.1",
         "zod": "^4.0.0",
       },
     },
     "packages/resend": {
       "name": "@infra-ts/resend",
-      "version": "0.1.0",
+      "version": "0.4.1",
       "dependencies": {
-        "@infra-ts/core": "workspace:*",
+        "@infra-ts/core": "0.4.1",
         "zod": "^4.0.0",
       },
     },
     "packages/runtime": {
       "name": "@infra-ts/runtime",
-      "version": "0.1.0",
+      "version": "0.4.1",
       "dependencies": {
-        "@infra-ts/core": "workspace:*",
+        "@infra-ts/core": "0.4.1",
         "jiti": "^2.7.0",
       },
     },
     "packages/sanity": {
       "name": "@infra-ts/sanity",
-      "version": "0.1.0",
+      "version": "0.4.1",
       "dependencies": {
-        "@infra-ts/core": "workspace:*",
+        "@infra-ts/core": "0.4.1",
         "zod": "^4.0.0",
       },
     },
     "packages/sentry": {
       "name": "@infra-ts/sentry",
-      "version": "0.1.0",
+      "version": "0.4.1",
       "dependencies": {
-        "@infra-ts/core": "workspace:*",
+        "@infra-ts/core": "0.4.1",
         "zod": "^4.0.0",
       },
     },
     "packages/statsig": {
       "name": "@infra-ts/statsig",
-      "version": "0.1.0",
+      "version": "0.4.1",
       "dependencies": {
-        "@infra-ts/core": "workspace:*",
+        "@infra-ts/core": "0.4.1",
         "zod": "^4.0.0",
       },
     },
     "packages/stripe": {
       "name": "@infra-ts/stripe",
-      "version": "0.1.0",
+      "version": "0.4.1",
       "dependencies": {
-        "@infra-ts/core": "workspace:*",
+        "@infra-ts/core": "0.4.1",
         "zod": "^4.0.0",
       },
     },
     "packages/upstash": {
       "name": "@infra-ts/upstash",
-      "version": "0.1.0",
+      "version": "0.4.1",
       "dependencies": {
-        "@infra-ts/core": "workspace:*",
+        "@infra-ts/core": "0.4.1",
         "zod": "^4.0.0",
       },
     },
     "packages/vercel": {
       "name": "@infra-ts/vercel",
-      "version": "0.1.0",
+      "version": "0.4.1",
       "dependencies": {
-        "@infra-ts/core": "workspace:*",
+        "@infra-ts/core": "0.4.1",
         "zod": "^4.0.0",
       },
     },
     "packages/workos": {
       "name": "@infra-ts/workos",
-      "version": "0.1.0",
+      "version": "0.4.1",
       "dependencies": {
-        "@infra-ts/core": "workspace:*",
+        "@infra-ts/core": "0.4.1",
         "zod": "^4.0.0",
       },
     },
   },
   "packages": {
+    "@clack/core": ["@clack/core@0.4.1", "", { "dependencies": { "picocolors": "^1.0.0", "sisteransi": "^1.0.5" } }, "sha512-Pxhij4UXg8KSr7rPek6Zowm+5M22rbd2g1nfojHJkxp5YkFqiZ2+YLEM/XGVIzvGOcM0nqjIFxrpDwWRZYWYjA=="],
+
+    "@clack/prompts": ["@clack/prompts@0.9.1", "", { "dependencies": { "@clack/core": "0.4.1", "picocolors": "^1.0.0", "sisteransi": "^1.0.5" } }, "sha512-JIpyaboYZeWYlyP0H+OoPPxd6nqueG/CmN6ixBiNFsIDHREevjIf0n0Ohh5gr5C8pEDknzgvz+pIJ8dMhzWIeg=="],
+
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.24.2", "https://npm-proxy.cloud.databricks.com/@esbuild/aix-ppc64/-/aix-ppc64-0.24.2.tgz", { "os": "aix", "cpu": "ppc64" }, "sha512-thpVCb/rhxE/BnMLQ7GReQLLN8q9qbHmI55F4489/ByVg2aQaQ6kbcLb6FHkocZzQhxc4gx0sCk0tJkKBFzDhA=="],
 
     "@esbuild/android-arm": ["@esbuild/android-arm@0.24.2", "https://npm-proxy.cloud.databricks.com/@esbuild/android-arm/-/android-arm-0.24.2.tgz", { "os": "android", "cpu": "arm" }, "sha512-tmwl4hJkCfNHwFB3nBa8z1Uy3ypZpxqxfTQOcHX+xRByyYgunVbZ9MzUUfb0RxaHIMnbHagwAxuTL+tnNM+1/Q=="],
@@ -390,6 +396,8 @@
     "resolve-from": ["resolve-from@5.0.0", "https://npm-proxy.cloud.databricks.com/resolve-from/-/resolve-from-5.0.0.tgz", {}, "sha512-qYg9KP24dD5qka9J47d0aVky0N+b4fTU89LN9iDnjB5waksiC49rvMB0PrUJQGoTmH50XPiqOvAjDfaijGxYZw=="],
 
     "rollup": ["rollup@4.61.1", "https://npm-proxy.cloud.databricks.com/rollup/-/rollup-4.61.1.tgz", { "dependencies": { "@types/estree": "1.0.9" }, "optionalDependencies": { "@rollup/rollup-android-arm-eabi": "4.61.1", "@rollup/rollup-android-arm64": "4.61.1", "@rollup/rollup-darwin-arm64": "4.61.1", "@rollup/rollup-darwin-x64": "4.61.1", "@rollup/rollup-freebsd-arm64": "4.61.1", "@rollup/rollup-freebsd-x64": "4.61.1", "@rollup/rollup-linux-arm-gnueabihf": "4.61.1", "@rollup/rollup-linux-arm-musleabihf": "4.61.1", "@rollup/rollup-linux-arm64-gnu": "4.61.1", "@rollup/rollup-linux-arm64-musl": "4.61.1", "@rollup/rollup-linux-loong64-gnu": "4.61.1", "@rollup/rollup-linux-loong64-musl": "4.61.1", "@rollup/rollup-linux-ppc64-gnu": "4.61.1", "@rollup/rollup-linux-ppc64-musl": "4.61.1", "@rollup/rollup-linux-riscv64-gnu": "4.61.1", "@rollup/rollup-linux-riscv64-musl": "4.61.1", "@rollup/rollup-linux-s390x-gnu": "4.61.1", "@rollup/rollup-linux-x64-gnu": "4.61.1", "@rollup/rollup-linux-x64-musl": "4.61.1", "@rollup/rollup-openbsd-x64": "4.61.1", "@rollup/rollup-openharmony-arm64": "4.61.1", "@rollup/rollup-win32-arm64-msvc": "4.61.1", "@rollup/rollup-win32-ia32-msvc": "4.61.1", "@rollup/rollup-win32-x64-gnu": "4.61.1", "@rollup/rollup-win32-x64-msvc": "4.61.1", "fsevents": "~2.3.2" }, "bin": { "rollup": "dist/bin/rollup" } }, "sha512-I4KW6iuRpuu2uHBLraZ1wNZe0DP7lnRha+VJ9tNaYVaVgKhW0aI3h4RYnoRPeql0flHm/Co55b7snEDcOfOJrA=="],
+
+    "sisteransi": ["sisteransi@1.0.5", "", {}, "sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg=="],
 
     "source-map": ["source-map@0.7.6", "https://npm-proxy.cloud.databricks.com/source-map/-/source-map-0.7.6.tgz", {}, "sha512-i5uvt8C3ikiWeNZSVZNWcfZPItFQOsYTUAOkcUPGd8DqDy1uOUikjt5dG+uRlwyvR108Fb9DOd4GvXfT0N2/uQ=="],
 

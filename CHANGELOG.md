@@ -7,6 +7,11 @@ changes both land in minor releases).
 
 ## [Unreleased]
 
+### Added
+
+- `infra link` now uses an interactive terminal selector for choosing org/team scopes, with scope ids
+  shown as hints and clean cancellation handling.
+
 ## [0.4.1] - 2026-06-30
 
 ### Fixed
