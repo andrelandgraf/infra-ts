@@ -53,7 +53,7 @@ const project = new NeonProject({
 ```
 
 - `infra login` authenticates the scope entity's provider (OAuth passthrough via `neonctl` / `vercel`).
-- `infra link` lists your orgs/teams, you pick one, and the scope id is written to `.infra.<env>`.
+- `infra link` lists your orgs/teams, you pick one, and the scope id is written to `.infra/<env>.json`.
 - Entities reference the scope with `org: neon.id` (Neon) or `team: vercel.id` (Vercel). The scope entity resolves first, so the scope is ready before anything provisions.
 
 Two scopes of the same provider just get two names (`new NeonOrg({ name: "work" })`). The common case is one login with many orgs (shared token, scope differs per scope).
@@ -88,7 +88,7 @@ Every command re-reads provider APIs:
 ```txt
 infra.ts declaration
         +
-.infra.<env> identity bindings
+.infra/<env>.json identity bindings
         +
 live provider API reads
         =
@@ -108,7 +108,7 @@ infra apply --env production
 
 The environment selects:
 
-- `.infra.<env>` identity bindings
+- `.infra/<env>.json` identity bindings
 - `.env.<env>` output file
 - environment-specific credentials or defaults
 

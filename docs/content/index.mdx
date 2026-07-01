@@ -31,7 +31,7 @@ Infrastructure-as-code is most valuable when it is repeatable, inspectable, and 
 
 infra-ts takes the opposite bet:
 
-- **Identity state only.** `.infra.<env>` maps entity names to provider ids. It never stores resource attributes or secrets.
+- **Identity state only.** `.infra/<env>.json` maps entity names to provider ids. It never stores resource attributes or secrets.
 - **Live reconciliation.** `plan`, `apply`, `status`, and `checkout` read current remote state through REST APIs before deciding what changed.
 - **TypeScript-native config.** Providers expose typed classes, refs, and environment outputs your editor and CI can check.
 - **Open provider model.** A provider is a thin package that implements one small entity contract. It does not need a custom engine.

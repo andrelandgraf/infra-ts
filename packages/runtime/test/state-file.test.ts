@@ -1,8 +1,13 @@
 import { describe, expect, test } from "bun:test";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import {
 	applyRenames,
 	emptyState,
+	infraReadmePath,
+	legacyStateFilePath,
 	readState,
+	stateFilePath,
 	writeState,
 } from "../src/lib/state-file.js";
 import { tempDir } from "./helpers.js";
@@ -15,9 +20,32 @@ describe("state file", () => {
 			const s = emptyState("prod");
 			s.entities.neon = { id: "p-1" };
 			writeState(dir, "prod", s);
+			expect(stateFilePath(dir, "prod")).toBe(join(dir, ".infra", "prod.json"));
+			expect(existsSync(infraReadmePath(dir))).toBe(true);
+			expect(readFileSync(infraReadmePath(dir), "utf8")).toContain(
+				"Why do I have a .infra folder?",
+			);
 			expect(readState(dir, "prod").entities.neon).toEqual({ id: "p-1" });
 			// different environment is isolated
 			expect(readState(dir, "local").entities).toEqual({});
+		} finally {
+			cleanup();
+		}
+	});
+
+	test("reads legacy .infra.<env> files as a migration fallback", () => {
+		const { dir, cleanup } = tempDir();
+		try {
+			writeFileSync(
+				legacyStateFilePath(dir, "prod"),
+				`${JSON.stringify({
+					version: 2,
+					environment: "prod",
+					entities: { neon: { id: "legacy" } },
+				})}\n`,
+				"utf8",
+			);
+			expect(readState(dir, "prod").entities.neon).toEqual({ id: "legacy" });
 		} finally {
 			cleanup();
 		}

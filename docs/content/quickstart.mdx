@@ -50,11 +50,11 @@ sidebar:
 
   </Step>
   <Step title="Authenticate and link scopes">
-    `login` runs each provider's OAuth flow through the CLIs you already use (`neonctl`, `vercel`). `link` then lets you pick the org/team for each scope entity and records it in `.infra.<env>`.
+    `login` runs each provider's OAuth flow through the CLIs you already use (`neonctl`, `vercel`). `link` then lets you pick the org/team for each scope entity and records it in `.infra/<env>.json`.
 
     ```bash
     infra login   # OAuth via the provider CLIs
-    infra link    # pick an org/team per scope → .infra.<env>
+    infra link    # pick an org/team per scope → .infra/<env>.json
     ```
 
     Prefer explicit credentials in CI? Set them in the environment instead:
@@ -78,7 +78,7 @@ sidebar:
 </Steps>
 
 :::tip
-The first `apply` writes `.infra.<env>`, a tiny identity link file. Keep it local and uncommitted, just like `.env.local` or `.vercel`.
+The first `apply` writes `.infra/<env>.json`, a tiny identity link file. Keep it local and uncommitted, just like `.env.local` or `.vercel`.
 :::
 
 ## Pull typed environment values

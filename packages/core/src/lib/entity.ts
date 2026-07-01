@@ -39,7 +39,7 @@ export interface ProvisionResult<
 	 * Defaults to the entity's `name` when omitted.
 	 */
 	id?: string;
-	/** Persisted to `.infra.<env>`. */
+	/** Persisted to `.infra/<env>.json`. */
 	state: State;
 	/** Logical typed env this entity exposes. */
 	env: Env;
@@ -168,7 +168,7 @@ export interface ProvisionContext<Creds, State> extends BaseContext<Creds> {
  * @typeParam O      - the options object (provider-specific config + {@link EntityCommon}).
  * @typeParam Creds  - credentials (validated against {@link credentialsSchema} → typed `ctx.credentials`).
  * @typeParam Env    - the typed env this entity outputs (logical camelCase keys).
- * @typeParam State  - the persisted `.infra.<env>` shape (ids + content hashes; no secrets).
+ * @typeParam State  - the persisted `.infra/<env>.json` shape (ids + content hashes; no secrets).
  * @typeParam Remote - the live snapshot {@link read} returns (for diff/status).
  */
 export abstract class Entity<

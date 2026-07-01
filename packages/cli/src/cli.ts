@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+	appendFileSync,
+	existsSync,
+	readFileSync,
+	writeFileSync,
+} from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import {
@@ -16,6 +21,7 @@ import {
 	checkout,
 	collectAccounts,
 	destroy,
+	ensureInfraDir,
 	ensureTools,
 	link,
 	loadConfig,
@@ -68,7 +74,9 @@ program
 	.action((providers: string[]) => withErrors(() => cmdLogin(providers)));
 program
 	.command("link")
-	.description("pick an org/team per scope entity; write the scope to .infra.<env>")
+	.description(
+		"pick an org/team per scope entity; write the scope to .infra/<env>.json",
+	)
 	.argument("[accounts...]", "limit to these account names")
 	.action((accounts: string[]) => withErrors(() => cmdLink(accounts)));
 program
@@ -149,6 +157,9 @@ async function cmdInit(): Promise<void> {
 		writeFileSync(target, INIT_TEMPLATE, "utf8");
 		info(chalk.green(`Created ${target}`));
 	}
+	ensureInfraDir(rootDir);
+	ensureGitignore(rootDir, ".infra/");
+	await maybeAddAgentInstructions(rootDir);
 	await installInfraTsDevDependency(rootDir);
 	info(
 		"Next: edit your entities, then run `infra-ts plan` and `infra-ts apply`.",
@@ -421,6 +432,41 @@ function hasInfraTsDependency(packageJson: Record<string, unknown>): boolean {
 		);
 	});
 }
+function ensureGitignore(rootDir: string, entry: string): void {
+	const gitignorePath = join(rootDir, ".gitignore");
+	const existing = existsSync(gitignorePath)
+		? readFileSync(gitignorePath, "utf8")
+		: "";
+	const lines = existing
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter(Boolean);
+	if (lines.includes(entry) || lines.includes(entry.replace(/\/$/, ""))) return;
+	const prefix = existing.length > 0 && !existing.endsWith("\n") ? "\n" : "";
+	appendFileSync(gitignorePath, `${prefix}${entry}\n`, "utf8");
+	info(chalk.green(`Added ${entry} to ${gitignorePath}`));
+}
+async function maybeAddAgentInstructions(rootDir: string): Promise<void> {
+	const target = agentInstructionsPath(rootDir);
+	if (!target) return;
+	const existing = readFileSync(target, "utf8");
+	if (existing.includes("## Infra Management")) return;
+	const ok = await confirm(
+		`Add infra-ts guidance to ${target}? This helps coding agents find infra.ts and .infra. (y/N) `,
+	);
+	if (!ok) return;
+	const prefix =
+		existing.length === 0 ? "" : existing.endsWith("\n") ? "\n" : "\n\n";
+	appendFileSync(target, `${prefix}${AGENT_INSTRUCTIONS_SECTION}`, "utf8");
+	info(chalk.green(`Added infra-ts guidance to ${target}`));
+}
+function agentInstructionsPath(rootDir: string): string | undefined {
+	const agents = join(rootDir, "AGENTS.md");
+	if (existsSync(agents)) return agents;
+	const claude = join(rootDir, "CLAUDE.md");
+	if (existsSync(claude)) return claude;
+	return undefined;
+}
 function detectPackageManager(
 	rootDir: string,
 ): "bun" | "npm" | "pnpm" | "yarn" {
@@ -591,6 +637,12 @@ export default defineInfra({
 \t\t}),
 \t],
 });
+`;
+
+const AGENT_INSTRUCTIONS_SECTION = `## Infra Management
+
+This repo uses infra-ts as the infrastructure-as-code system. You can find the infra state in
+\`.infra\` and the provisioned infrastructure declaration in \`infra.ts\`.
 `;
 
 program.parseAsync(process.argv);

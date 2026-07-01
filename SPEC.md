@@ -11,7 +11,7 @@ declare a graph of **entities** (a Neon project, a Postgres database, a Vercel p
 function, a Redis cache, …) in a single `infra.ts` file. `infra plan` shows what would change;
 `infra apply` reconciles the live remote to your declaration; `infra checkout` pulls a typed
 `.env` for an environment. There is **no resource state store** — only a tiny per-environment
-link file (`.infra.<env>`) holding stable identifiers. Everything else is re-read live from each
+link file (`.infra/<env>.json`) holding stable identifiers. Everything else is re-read live from each
 provider's REST API on every command.
 
 This document is long on purpose and full of code. Read it top to bottom once; after that the
@@ -30,7 +30,7 @@ This document is long on purpose and full of code. Read it top to bottom once; a
 7. [Environments](#7-environments)
 8. [Credentials](#8-credentials)
 9. [Environment variables (typed env)](#9-environment-variables-typed-env)
-10. [State (`.infra.<env>`)](#10-state-infraenv)
+10. [State (`.infra/<env>.json`)](#10-state-infraenv)
 11. [Lifecycle in detail](#11-lifecycle-in-detail)
 12. [`checkout` & drift](#12-checkout--drift)
 13. [Hooks](#13-hooks)
@@ -49,7 +49,7 @@ This document is long on purpose and full of code. Read it top to bottom once; a
 
 - **No attribute state — identity state only.** infra-ts never stores resource _attributes_. It
   persists only **identity state** — _bindings_ (provider ids, and content hashes for deployments)
-  — in `.infra.<env>`. There is no attribute state to "store wrong": the remote API _is_ the
+  — in `.infra/<env>.json`. There is no attribute state to "store wrong": the remote API _is_ the
   source of truth, and every command reads it live and diffs against your `infra.ts`. The
   reconciler is stateless; only your entity↔remote identity is persisted.
 - **Typed end to end.** Entities declare their credentials, env, and state with
@@ -72,11 +72,11 @@ This document is long on purpose and full of code. Read it top to bottom once; a
   [`Entity`](#4-the-entity-contract) contract.
 - **`defineInfra`** — the default export of `infra.ts`; collects entities + global config.
 - **Environment** — a named target (`local`, `preview`, `production`, …). Selects credentials,
-  the state file (`.infra.<env>`), and the env file (`.env.<env>`). Never changes the _set_ of
+  the state file (`.infra/<env>.json`), and the env file (`.env.<env>`). Never changes the _set_ of
   env vars an entity exposes (see [§7](#7-environments)).
 - **Ref** — a typed, deferred reference to another entity's output (`postgres.env.databaseUrl`,
   `project.id`). Creates a dependency edge; resolved by the engine at provision time.
-- **State** — the persisted `.infra.<env>` entry for an entity: stable ids + content hashes.
+- **State** — the persisted `.infra/<env>.json` entry for an entity: stable ids + content hashes.
   **Never secrets.**
 - **Remote** — the live snapshot an entity's `read()` returns, used to diff/render. Ephemeral
   (not persisted).
@@ -177,7 +177,7 @@ abstract class Entity<
 	/** The typed env this entity outputs. Logical camelCase keys (e.g. `databaseUrl`). §9 */
 	abstract readonly envSchema: StandardSchemaV1<unknown, Env>;
 
-	/** The persisted `.infra.<env>` shape for this entity: ids + content hashes. No secrets. §10 */
+	/** The persisted `.infra/<env>.json` shape for this entity: ids + content hashes. No secrets. §10 */
 	abstract readonly stateSchema: StandardSchemaV1<unknown, State>;
 
 	/** Optional: rename specific env vars on disk. Logical key → OS key. Values pass through. §9 */
@@ -242,7 +242,7 @@ interface Change {
 
 interface ProvisionResult<Env, State> {
 	action: ChangeAction; // "created" maps to "create", etc.; "noop" when nothing changed
-	state: State; // persisted to .infra.<env>
+	state: State; // persisted to .infra/<env>.json
 	env: Env; // logical typed env this entity exposes
 	message?: string;
 }
@@ -256,7 +256,7 @@ interface BaseContext<Creds> {
 }
 
 interface ReadContext<Creds, State> extends BaseContext<Creds> {
-	/** The persisted binding from `.infra.<env>`, or `null` if never provisioned. */
+	/** The persisted binding from `.infra/<env>.json`, or `null` if never provisioned. */
 	state: State | null;
 }
 
@@ -399,7 +399,7 @@ Every command runs against an **environment** (a string). Selection precedence:
 The environment selects:
 
 - the **credentials** (`loadEnv(environment)` / `credentials(environment)`),
-- the **state file** `.infra.<environment>`,
+- the **state file** `.infra/<environment>.json`,
 - the **env file** `.env.<environment>`,
 - any **dynamic config** an entity computes via `configure(environment)`.
 
@@ -520,13 +520,13 @@ export default defineInfra({ entities: [personal, work, project, db, tools] });
 A scope entity:
 
 - **Is a named entity** (`new NeonOrg({ name })`) — the `name` is its identifier and the key
-  under which its scope lives in `.infra.<env>` (`entities.personal = { scopeId: "org-…" }`).
+  under which its scope lives in `.infra/<env>.json` (`entities.personal = { scopeId: "org-…" }`).
   Two scopes ⇒ two names; duplicate names are the usual hard error.
 - **Exposes `scope.id`** = the bound scope id (e.g. a Neon `org-…` / Vercel `team_…`). Entities
   wire it where they'd otherwise hardcode an org/team: `org: personal.id`. That ref creates the
   edge, so the scope resolves first.
 - **Is bound by `infra-ts link`, not `apply`.** `link` lists your orgs/teams (via the authed CLI /
-  REST), you pick one, and the id is written to `.infra.<env>` under the account name. `apply`
+  REST), you pick one, and the id is written to `.infra/<env>.json` under the account name. `apply`
   reads it; the scope's `provision` **creates no remote resource** — it just verifies a scope is
   bound (else errors _“run `infra-ts link <name>`”_) and never deletes the org on `destroy`.
 - **Anchors auth.** `infra-ts login` authenticates the scope entity's provider (CLI OAuth passthrough
@@ -625,13 +625,13 @@ destructure, and override with the single-field accessor.
 
 ---
 
-## 10. State (`.infra.<env>`)
+## 10. State (`.infra/<env>.json`)
 
-The **only** thing infra-ts persists. Per environment, a JSON file `.infra.<environment>` mapping
+The **only** thing infra-ts persists. Per environment, a JSON file `.infra/<environment>.json` mapping
 entity id → its `state` (validated by `stateSchema`).
 
 ```jsonc
-// .infra.production
+// .infra/production.json
 {
 	"version": 2,
 	"environment": "production",
@@ -645,15 +645,15 @@ entity id → its `state` (validated by `stateSchema`).
 
 Rules:
 
-- **Bindings + content hashes only — never secrets.** (Ids, org/project/branch ids, source
-  hashes for idempotent deploys.) This is what makes it safe to commit.
-- **Per-environment gitignore strategy:** ignore `.infra.local` / `.infra.preview`; **commit
-  `.infra.production`** so the team targets the same prod resources. Safe because it's only ids.
+- **Bindings + content hashes only — never secrets.** (Ids, org/project/branch ids, source hashes
+  for idempotent deploys.)
+- **Gitignore strategy:** ignore the `.infra/` folder by default. It contains local identity links,
+  not secrets, but infra-ts treats it as workspace state rather than source.
 - State is written **incrementally** during `apply` (the moment an entity records ids) so a
   mid-run failure never orphans a just-created resource.
-- Light concurrency note: committed prod state is shared, but two simultaneous prod applies don't
-  corrupt anything — reconcile reads remote live; state is just ids. No locking needed (that's the
-  payoff of keeping no attribute state — only identity).
+- Light concurrency note: two simultaneous applies don't corrupt attribute state because reconcile
+  reads remote live; `.infra/` is just ids. Remote providers may still reject conflicting mutations,
+  but infra-ts does not need a lock for local attribute state.
 
 ---
 
@@ -852,7 +852,7 @@ export default defineInfra({
 
 Semantics:
 
-- Before reconciling, the engine **re-keys** `.infra.<env>` state from `old` → `new`.
+- Before reconciling, the engine **re-keys** `.infra/<env>.json` state from `old` → `new`.
 - **Idempotent & safe to leave in:** if `old` isn't in state, it's a no-op. You don't have to
   remove the entry after it applies.
 - **Hard error** if both `old` and `new` already exist in state (ambiguous), or if `new` is not a
@@ -863,7 +863,7 @@ Semantics:
 
 ## 15. Deletion / pruning
 
-Because every entity is individually tracked in `.infra.<env>`, infra-ts can safely detect
+Because every entity is individually tracked in `.infra/<env>.json`, infra-ts can safely detect
 **entity-in-state-but-not-in-config** and offer to remove it (the thing the v1 additive model
 could not do).
 
@@ -888,13 +888,13 @@ For every command, the engine:
      error.
 5. **Topologically sort** by edges (inferred from refs + nesting).
 6. **Load inputs**: `loadEnv(environment)`; build per-entity credentials (merge + validate).
-7. **Read state** `.infra.<environment>`; **apply `renames`** (re-key).
+7. **Read state** `.infra/<environment>.json`; **apply `renames`** (re-key).
 8. **Per entity, in topo order** (independent entities may run in parallel):
    - resolve any `Ref`s in its options from already-provisioned outputs;
    - **`plan` / `status`**: `read` → `diff` (or render remote); collect `Change[]`. _No mutations,
      no hooks, no state writes._
    - **`apply`**: run `provision.before` hook → `provision(ctx)` → persist returned `state` to
-     `.infra.<env>` immediately → record `env` outputs for dependents → run `afterApply` hook.
+     `.infra/<env>.json` immediately → record `env` outputs for dependents → run `afterApply` hook.
    - **`destroy` / prune**: `deprovision` in reverse order; remove from state.
 9. **Write env**: merge every entity's `env` → OS keys → `.env.<environment>` (merge-in-place,
    preserving unmanaged lines). Skipped for `plan` / `status`.
@@ -909,16 +909,16 @@ State is written incrementally (step 8) so a failure never leaks an untracked re
 
 Everything is also an SDK function (`import { apply, plan, … } from "infra-ts"`).
 
-| Command                                    | Description                                                         |
-| ------------------------------------------ | ------------------------------------------------------------------- |
-| `infra login [provider…]`                  | Authenticate each account's provider (CLI OAuth passthrough). §8.3  |
-| `infra link [scope…] [--env e]`            | Pick an org/team per scope entity; write the scope to `.infra.<e>`. §8.3 |
-| `infra plan [--env e]`                     | Dry run: the changes `apply` would make. No mutations, no hooks.    |
-| `infra apply [--env e] [--prune]`          | Reconcile remote to `infra.ts`; write `.env.<e>`; run hooks.        |
-| `infra status [--env e]`                   | Live state of every entity. Read-only.                              |
-| `infra checkout [--env e] [--ignore-diff]` | Pull typed `.env.<e>` from remote + drift guard.                    |
-| `infra destroy [--env e] [-y]`             | Deprovision all entities (reverse order). Destructive.              |
-| `infra run [--env e] -- <cmd>`             | Resolve env and inject into a child process (nothing written).      |
+| Command                                    | Description                                                                   |
+| ------------------------------------------ | ----------------------------------------------------------------------------- |
+| `infra login [provider…]`                  | Authenticate each account's provider (CLI OAuth passthrough). §8.3            |
+| `infra link [scope…] [--env e]`            | Pick an org/team per scope entity; write the scope to `.infra/<e>.json`. §8.3 |
+| `infra plan [--env e]`                     | Dry run: the changes `apply` would make. No mutations, no hooks.              |
+| `infra apply [--env e] [--prune]`          | Reconcile remote to `infra.ts`; write `.env.<e>`; run hooks.                  |
+| `infra status [--env e]`                   | Live state of every entity. Read-only.                                        |
+| `infra checkout [--env e] [--ignore-diff]` | Pull typed `.env.<e>` from remote + drift guard.                              |
+| `infra destroy [--env e] [-y]`             | Deprovision all entities (reverse order). Destructive.                        |
+| `infra run [--env e] -- <cmd>`             | Resolve env and inject into a child process (nothing written).                |
 
 Global: `--env`, `--json`, `--only <ids…>`, `--cwd`, `--config`, `--verbose`.
 
@@ -1055,8 +1055,8 @@ export default defineInfra({ entities: [project, cache, db, api] });
 ### 19.5 Multiple environments
 
 ```bash
-infra apply --env preview     # → .infra.preview + .env.preview, preview org creds
-infra apply --env production  # → .infra.production (committed) + .env.production
+infra apply --env preview     # → .infra/preview.json + .env.preview, preview org creds
+infra apply --env production  # → .infra/production.json + .env.production, production org creds
 infra checkout --env preview  # pull preview env locally
 ```
 

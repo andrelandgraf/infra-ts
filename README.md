@@ -58,7 +58,7 @@ and stored somewhere. SST is lovely but wraps Pulumi, so it inherits the same st
 infra-ts takes the opposite bet:
 
 - **No attribute state — identity state only.** infra-ts never stores resource attributes. The
-  only thing it persists is a tiny `.infra.<env>` _identity link file_ that maps each entity to its
+  only thing it persists is a tiny `.infra/<env>.json` _identity link file_ that maps each entity to its
   remote id (like `.vercel` or `.neon`). Every command re-reads live state from the provider's API
   and diffs against your `infra.ts`. There is no attribute-state store to drift, lock, or corrupt —
   the remote API _is_ the source of truth.
@@ -74,10 +74,10 @@ infra-ts takes the opposite bet:
 | Language      | HCL / general           | TS (wraps Pulumi)        | **TS (native)**                    |
 | State         | attribute-state backend | attribute state (Pulumi) | **identity state only (live API)** |
 | Config file   | `*.tf` / `Pulumi.ts`    | `sst.config.ts`          | **`infra.ts`**                     |
-| Local pointer | state backend           | Pulumi stack             | **`.infra.<env>` link file**       |
+| Local pointer | state backend           | Pulumi stack             | **`.infra/<env>.json` link file**  |
 | Extensibility | providers (Go plugins)  | Pulumi providers         | **`@infra-ts/*` REST wrappers**    |
 
-> **Identity state, not attribute state:** infra-ts keeps a per-environment `.infra.<env>` pointer
+> **Identity state, not attribute state:** infra-ts keeps a per-environment `.infra/<env>.json` pointer
 > (entity → remote id) so it knows _which_ remote resource each entity maps to. That file holds
 > **bindings, never resource attributes** — the live remote is the source of truth. The reconciler
 > itself is stateless.
@@ -177,19 +177,20 @@ the dependency (e.g. its `.id`).
 
 Every command targets a named **environment** (`local` by default), selected by
 `--env`/`-e`, then `INFRA_ENV`, then `defaultEnvironment` in your config, then `local`. The
-environment selects the state file (`.infra.<env>`), the env file (`.env.<env>`), and which
+environment selects the state file (`.infra/<env>.json`), the env file (`.env.<env>`), and which
 credentials to use. infra-ts deliberately does **not** use `NODE_ENV`.
 
 > **Invariant:** an entity's _set_ of env keys is static across environments; only the _values_
 > change. This keeps `parseEnv` types identical everywhere.
 
-### The `.infra.<env>` link file
+### The `.infra` folder
 
-A small, git-ignored JSON file written at your project root, one per environment:
+A small, git-ignored folder written at your project root. It contains one JSON state file per
+environment, such as `.infra/local.json`, plus a short README explaining why the folder exists:
 
 ```json
 {
-	"version": 1,
+	"version": 2,
 	"environment": "local",
 	"entities": {
 		"my-app": { "id": "wandering-frost-12345678" },
@@ -199,8 +200,8 @@ A small, git-ignored JSON file written at your project root, one per environment
 }
 ```
 
-It's just **bindings** — the ids that tie each entity to a concrete remote resource. Delete it and
-`infra apply` creates fresh resources; commit nothing here.
+It's just **bindings** — the ids that tie each entity to a concrete remote resource. Delete a state
+file and `infra apply` creates fresh resources; commit nothing here.
 
 ### Orgs/teams — auth + provider scope
 
@@ -208,7 +209,7 @@ Provisioning needs two per-developer things that don't belong hardcoded in `infr
 and the **org/team to provision into**. Both are modeled by a named scope entity
 (`NeonOrg`, `VercelTeam`) that creates no remote resource. Its scope (org/team id) is bound by
 `infra link` and stored in
-`.infra.<env>`; auth comes from `infra login`.
+`.infra/<env>.json`; auth comes from `infra login`.
 
 ```ts
 import { NeonOrg, NeonProject } from "infra-ts/neon";
@@ -219,7 +220,7 @@ const project = new NeonProject({ name: "app", org: neon.id }); // org from the 
 
 ```bash
 infra login    # authenticate (neonctl/vercel OAuth passthrough)
-infra link     # pick an org/team per scope → written to .infra.<env>
+infra link     # pick an org/team per scope → written to .infra/<env>.json
 infra apply    # provision into that scope
 ```
 
@@ -311,17 +312,17 @@ All commands accept these global options:
 | `--json`                  | Machine-readable JSON output.                           |
 | `--verbose`               | Print debug logging.                                    |
 
-| Command                          | Description                                                                            |
-| -------------------------------- | -------------------------------------------------------------------------------------- |
-| `infra init`                     | Scaffold an `infra.ts` in the current directory.                                       |
-| `infra login [providers...]`     | Authenticate each account's provider (CLI OAuth passthrough).                          |
-| `infra link [scopes...]`         | Pick an org/team per scope entity; write the scope to `.infra.<env>`.                  |
-| `infra plan`                     | Show the changes `apply` would make (dry run; no mutations, no state writes).          |
-| `infra apply [--prune]`          | Reconcile remote to `infra.ts`, persist `.infra.<env>`, write `.env.<env>`, run hooks. |
-| `infra status`                   | Print the live state of every entity (exists + pending drift).                         |
-| `infra checkout [--ignore-diff]` | Pull typed env from the live remote into `.env.<env>` (errors on drift).               |
-| `infra destroy [-y]`             | Tear down every entity (destructive; reverse dependency order).                        |
-| `infra run -- <cmd>`             | Inject the resolved env into a child command (nothing written to disk).                |
+| Command                          | Description                                                                                 |
+| -------------------------------- | ------------------------------------------------------------------------------------------- |
+| `infra init`                     | Scaffold an `infra.ts` in the current directory.                                            |
+| `infra login [providers...]`     | Authenticate each account's provider (CLI OAuth passthrough).                               |
+| `infra link [scopes...]`         | Pick an org/team per scope entity; write the scope to `.infra/<env>.json`.                  |
+| `infra plan`                     | Show the changes `apply` would make (dry run; no mutations, no state writes).               |
+| `infra apply [--prune]`          | Reconcile remote to `infra.ts`, persist `.infra/<env>.json`, write `.env.<env>`, run hooks. |
+| `infra status`                   | Print the live state of every entity (exists + pending drift).                              |
+| `infra checkout [--ignore-diff]` | Pull typed env from the live remote into `.env.<env>` (errors on drift).                    |
+| `infra destroy [-y]`             | Tear down every entity (destructive; reverse dependency order).                             |
+| `infra run -- <cmd>`             | Inject the resolved env into a child command (nothing written to disk).                     |
 
 `infra` and `infra-ts` are aliases for the same CLI. Examples:
 
@@ -880,7 +881,7 @@ fail fast.
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | [`infra-ts`](packages/cli)                    | Umbrella: the `infra-ts` CLI + SDK + bundled providers (`infra-ts/neon`, `/vercel`, `/upstash`, `/resend`, `/mux`).                                                |
 | [`@infra-ts/core`](packages/core)             | The open standard: `Entity` contract, `defineInfra`, refs/DAG, env mapping, REST client, `parseEnv`, errors.                                                       |
-| [`@infra-ts/runtime`](packages/runtime)       | The engine: config loading (jiti), `.infra.<env>` I/O, `plan`/`apply`/`status`/`checkout`/`destroy`, hooks, dotenv.                                                |
+| [`@infra-ts/runtime`](packages/runtime)       | The engine: config loading (jiti), `.infra/<env>.json` I/O, `plan`/`apply`/`status`/`checkout`/`destroy`, hooks, dotenv.                                           |
 | [`@infra-ts/neon`](packages/neon)             | Neon entities: `NeonOrg`, `NeonProject` (incl. logical replication), `NeonPostgres`, `NeonReadReplica`, `NeonAuth`, `NeonDataApi`.                                 |
 | [`@infra-ts/vercel`](packages/vercel)         | Vercel entities: `VercelTeam`, `VercelProject`, `VercelDeployment`, `VercelEdgeConfig`, `VercelWebhook`, `VercelDnsRecord`, `VercelLogDrain`, `VercelAccessGroup`. |
 | [`@infra-ts/upstash`](packages/upstash)       | Upstash entities: `UpstashRedis`, `UpstashVector`, `UpstashQStashQueue`, `UpstashQStashSchedule`, `UpstashQStashTopic`.                                            |

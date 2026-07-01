@@ -1,7 +1,7 @@
 /**
  * `@infra-ts/runtime` — the infra-ts engine (imperative shell, v2).
  *
- * Loads `infra.ts` (jiti), reads/writes the per-environment `.infra.<env>` state, resolves
+ * Loads `infra.ts` (jiti), reads/writes the per-environment `.infra/<env>.json` state, resolves
  * credentials, and runs the core operations across the entity graph in dependency order:
  * `plan` / `apply` / `status` / `checkout` / `destroy`, plus the hook runner and env-file writer.
  */
@@ -50,6 +50,12 @@ export { envFileFor, toEntries, writeEnvFile } from "./lib/dotenv.js";
 export {
 	applyRenames,
 	emptyState,
+	ensureInfraDir,
+	INFRA_DIR,
+	INFRA_README,
+	infraDirPath,
+	infraReadmePath,
+	legacyStateFilePath,
 	readState,
 	STATE_VERSION,
 	stateFilePath,

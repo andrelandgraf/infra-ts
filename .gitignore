@@ -5,7 +5,7 @@ dist/
 .DS_Store
 
 # infra-ts identity link files (per-developer, per-environment pointers)
-.infra
+.infra/
 .infra.*
 
 # Local env files (may contain secrets)

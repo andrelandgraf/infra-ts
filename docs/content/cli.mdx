@@ -12,17 +12,17 @@ Install globally with `npm i -g infra-ts` to get the `infra` command. `infra` an
 
 ## Commands
 
-| Command              | Purpose                                                        |
-| -------------------- | -------------------------------------------------------------- |
-| `infra init`         | Scaffold an `infra.ts` file.                                   |
-| `infra login`        | Authenticate provider accounts when supported.                 |
-| `infra link`         | Bind scope entities such as orgs or teams into `.infra.<env>`. |
-| `infra plan`         | Read live state and preview changes.                           |
-| `infra apply`        | Reconcile live resources to match `infra.ts`.                  |
-| `infra status`       | Show live existence and pending drift.                         |
-| `infra checkout`     | Pull typed env outputs into `.env.<env>`.                      |
-| `infra destroy`      | Tear down all resources bound to the current environment.      |
-| `infra run -- <cmd>` | Run a child process with resolved env injected.                |
+| Command              | Purpose                                                             |
+| -------------------- | ------------------------------------------------------------------- |
+| `infra init`         | Scaffold an `infra.ts` file.                                        |
+| `infra login`        | Authenticate provider accounts when supported.                      |
+| `infra link`         | Bind scope entities such as orgs or teams into `.infra/<env>.json`. |
+| `infra plan`         | Read live state and preview changes.                                |
+| `infra apply`        | Reconcile live resources to match `infra.ts`.                       |
+| `infra status`       | Show live existence and pending drift.                              |
+| `infra checkout`     | Pull typed env outputs into `.env.<env>`.                           |
+| `infra destroy`      | Tear down all resources bound to the current environment.           |
+| `infra run -- <cmd>` | Run a child process with resolved env injected.                     |
 
 ## Global flags
 

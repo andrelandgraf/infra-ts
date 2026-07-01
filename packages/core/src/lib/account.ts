@@ -15,7 +15,7 @@ export interface AccountScope {
 	name: string;
 }
 
-/** The persisted scope binding for an account in `.infra.<env>`. */
+/** The persisted scope binding for an account in `.infra/<env>.json`. */
 export type AccountState = { scopeId: string };
 
 export interface AccountOptions extends EntityCommon<
@@ -71,7 +71,7 @@ const scopeStateSchema: StandardSchemaV1<unknown, AccountState> = {
 
 /**
  * A provider **scope + auth anchor** (a Neon org, a Vercel team). Unlike normal entities, an
- * account creates no remote resource: its scope is bound by `infra link` (written to `.infra.<env>`)
+ * account creates no remote resource: its scope is bound by `infra link` (written to `.infra/<env>.json`)
  * and authenticated by `infra login`. Entities reference `account.id` (the scope id) where they'd
  * otherwise hardcode an org/team. See SPEC §8.3.
  */

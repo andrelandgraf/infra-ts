@@ -42,6 +42,13 @@ describe("init command", () => {
 			expect(config).toContain("org: neon.id");
 			expect(config).toContain("team: vercel.id");
 			expect(config.match(/name: "my-app-(?:neon|vercel)"/g)).toHaveLength(2);
+			expect(existsSync(join(dir, ".infra", "README.md"))).toBe(true);
+			expect(readFileSync(join(dir, ".infra", "README.md"), "utf8")).toContain(
+				"Why do I have a .infra folder?",
+			);
+			expect(readFileSync(join(dir, ".gitignore"), "utf8")).toContain(
+				".infra/",
+			);
 
 			const packageJson = JSON.parse(
 				readFileSync(join(dir, "package.json"), "utf8"),
@@ -85,6 +92,10 @@ describe("init command", () => {
 			expect(result.status).toBe(0);
 			expect(result.stdout).toContain("leaving it unchanged");
 			expect(readFileSync(join(dir, "infra.ts"), "utf8")).toBe(originalConfig);
+			expect(existsSync(join(dir, ".infra", "README.md"))).toBe(true);
+			expect(readFileSync(join(dir, ".gitignore"), "utf8")).toContain(
+				".infra/",
+			);
 
 			const packageJson = JSON.parse(
 				readFileSync(join(dir, "package.json"), "utf8"),
@@ -135,6 +146,30 @@ describe("init command", () => {
 				packageJson.dependencies?.["infra-ts"];
 			expect(installedVersion).toBeString();
 			expect(installedVersion).not.toBe("0.0.0");
+		} finally {
+			rmSync(dir, { force: true, recursive: true });
+		}
+	});
+
+	test("does not change AGENTS.md without interactive confirmation", () => {
+		const dir = mkdtempSync(join(tmpdir(), "infra-ts-init-agents-"));
+		try {
+			const originalAgents = "# Agent notes\n";
+			writeFileSync(join(dir, "AGENTS.md"), originalAgents, "utf8");
+
+			const result = spawnSync(process.execPath, [cliPath, "init"], {
+				cwd: dir,
+				env: {
+					...process.env,
+					FORCE_COLOR: "0",
+					npm_config_before: "2026-07-01T00:00:00.000Z",
+				},
+				encoding: "utf8",
+				timeout: 120_000,
+			});
+
+			expect(result.status).toBe(0);
+			expect(readFileSync(join(dir, "AGENTS.md"), "utf8")).toBe(originalAgents);
 		} finally {
 			rmSync(dir, { force: true, recursive: true });
 		}

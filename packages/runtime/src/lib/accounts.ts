@@ -102,7 +102,7 @@ export interface LinkResult {
 }
 
 /**
- * `infra link` (write side) — persist each account's chosen scope id into `.infra.<env>`. The CLI
+ * `infra link` (write side) — persist each account's chosen scope id into `.infra/<env>.json`. The CLI
  * resolves credentials, lists scopes via `account.listScopes`, and prompts the user, then calls this
  * with the chosen ids. Kept network-free + non-interactive so it's unit-testable.
  */

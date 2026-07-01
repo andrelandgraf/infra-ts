@@ -61,7 +61,7 @@ describe("Account node", () => {
 });
 
 describe("link", () => {
-	test("writes the chosen scope into .infra.<env>", async () => {
+	test("writes the chosen scope into .infra/<env>.json", async () => {
 		const { dir, cleanup } = tempDir();
 		try {
 			const account = new FakeAccount({ name: "acct" });
