@@ -39,7 +39,7 @@ new VercelProject({
 
 ## Orgs/teams
 
-Before infra-ts can provision anything it needs two per-developer things that don't belong hardcoded in `infra.ts`: a token, and the org/team to provision into. Both are modeled by a provider-native scope entity such as `NeonOrg` or `VercelTeam` — a named entity that creates no remote resource of its own.
+Before infra-ts can provision anything, it needs two per-developer things you don't want hardcoded in `infra.ts`: a token, and the org/team to provision into. Both are modeled by a provider-native scope entity such as `NeonOrg` or `VercelTeam` — a named entity that creates no remote resource of its own.
 
 ```ts
 import { NeonOrg, NeonProject } from "infra-ts/neon";

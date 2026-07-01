@@ -6,9 +6,9 @@ sidebar:
   order: 0
 ---
 
-infra-ts lets you declare infrastructure as typed entities in a single `infra.ts` file, then reconcile that declaration against live provider APIs.
+infra-ts lets you describe your whole stack as typed entities in one `infra.ts` file, then keeps it in sync with the real thing by talking to each provider's API.
 
-There is no attribute-state backend. infra-ts persists only a small per-environment identity link file, re-reads the live remote on every command, and treats provider APIs as the source of truth.
+There's no heavy state backend to babysit. infra-ts just remembers which remote resource maps to which entity, re-reads the live state on every command, and treats the provider APIs as the source of truth.
 
 <CardGroup cols={2}>
 	<Card title="Quickstart" href="/quickstart" icon="rocket">
@@ -27,14 +27,14 @@ There is no attribute-state backend. infra-ts persists only a small per-environm
 
 ## Why it exists
 
-Infrastructure-as-code is most valuable when it is repeatable, inspectable, and safe to automate. Traditional state engines solve identity and drift by storing a full attribute snapshot outside the live system. That snapshot becomes another database to lock, protect, migrate, and debug.
+Terraform and Pulumi are great — but they're pretty heavy for vibe coding a full-stack TypeScript app. They make a lot of sense for sophisticated, enterprise cloud management. They make less sense when you (or your agents) just want to assemble Vercel, Neon, and Upstash into a full-stack app and move on.
 
-infra-ts takes the opposite bet:
+infra-ts is the lightweight take for that world:
 
-- **Identity state only.** `.infra/<env>.json` maps entity names to provider ids. It never stores resource attributes or secrets.
-- **Live reconciliation.** `plan`, `apply`, `status`, and `checkout` read current remote state through REST APIs before deciding what changed.
-- **TypeScript-native config.** Providers expose typed classes, refs, and environment outputs your editor and CI can check.
-- **Open provider model.** A provider is a thin package that implements one small entity contract. It does not need a custom engine.
+- **Identity state only.** `.infra/<env>.json` just maps entity names to provider ids — no resource attributes, no secrets, no snapshot to babysit.
+- **Live reconciliation.** `plan`, `apply`, `status`, and `checkout` read the current remote state over REST before deciding what changed.
+- **TypeScript-native.** Providers are typed classes with refs and env outputs your editor and CI already understand.
+- **Open providers.** A provider is just a thin package over a REST API — there's no custom engine to learn.
 
 ## A minimal `infra.ts`
 
@@ -70,7 +70,7 @@ export default defineInfra({
 });
 ```
 
-A scope entity is the org/team you provision into; `infra login` authenticates the provider and `infra link` binds the scope. See [Core concepts](/concepts#orgsteams).
+A scope entity is just the org/team you provision into: `infra login` signs you in and `infra link` picks the scope. See [Core concepts](/concepts#orgsteams).
 
 ```bash
 infra plan
@@ -80,7 +80,7 @@ infra status
 
 ## What ships today
 
-The `infra-ts` npm package is the batteries-included CLI and SDK. It bundles the core runtime and first provider set as subpath imports:
+The `infra-ts` npm package is the batteries-included CLI and SDK — the core runtime plus the first set of providers, all as subpath imports:
 
 ```ts
 import { defineInfra, parseEnv } from "infra-ts";
@@ -89,4 +89,4 @@ import { VercelProject } from "infra-ts/vercel";
 import { StripeProduct } from "infra-ts/stripe";
 ```
 
-The project is early, but the direction is intentionally simple: typed entities, live REST reconciliation, no attribute state.
+It's early days, but the idea is deliberately simple: typed entities, live REST reconciliation, no attribute state.

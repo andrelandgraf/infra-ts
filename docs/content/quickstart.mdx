@@ -21,7 +21,7 @@ sidebar:
 
   </Step>
   <Step title="Create infra.ts">
-    Declare resources as typed entity instances. Scope entities hold the org/team you provision into; resources reference them (and each other) through refs, so wiring creates dependency edges automatically.
+    Declare your resources as typed entity instances. Scope entities hold the org/team you provision into, and resources point at them (and each other) through refs — so just wiring things together builds the dependency graph for you.
 
     ```ts
     import { defineInfra } from "infra-ts";
