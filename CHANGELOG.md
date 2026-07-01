@@ -7,10 +7,19 @@ changes both land in minor releases).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-01
+
 ### Added
 
 - `infra link` now uses an interactive terminal selector for choosing org/team scopes, with scope ids
   shown as hints and clean cancellation handling.
+- `infra init` now creates `.infra/README.md`, adds `.infra/` to `.gitignore`, and can append an
+  optional `## Infra Management` section to an existing `AGENTS.md` or `CLAUDE.md`.
+
+### Changed
+
+- infra-ts now stores identity state in `.infra/<env>.json` instead of root-level `.infra.<env>`
+  files. Existing `.infra.<env>` files are still read as a migration fallback.
 
 ## [0.4.1] - 2026-06-30
 
@@ -121,7 +130,8 @@ deploy --prebuilt` CLI flow (content-hash idempotent, deployment id/URL captured
   state in `.infra.<env>`, `parseEnv`), the `plan`/`apply`/`status`/`checkout`/`destroy` engine, the
   CLI + SDK, and the Neon, Vercel, Upstash, Resend, and Mux providers.
 
-[Unreleased]: https://github.com/andrelandgraf/infra-ts/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/andrelandgraf/infra-ts/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/andrelandgraf/infra-ts/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/andrelandgraf/infra-ts/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/andrelandgraf/infra-ts/compare/v0.3.3...v0.4.0
 [0.3.3]: https://github.com/andrelandgraf/infra-ts/compare/v0.3.2...v0.3.3

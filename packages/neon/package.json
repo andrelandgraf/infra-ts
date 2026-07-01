@@ -1,6 +1,6 @@
 {
 	"name": "@infra-ts/neon",
-	"version": "0.4.1",
+	"version": "0.5.0",
 	"description": "infra-ts provider for Neon — manage Neon projects, branches and compute as typed, live-reconciled config-as-code (no attribute state).",
 	"keywords": [
 		"infra-ts",
@@ -30,7 +30,7 @@
 		"typecheck": "tsc -p tsconfig.json --noEmit"
 	},
 	"dependencies": {
-		"@infra-ts/core": "0.4.1",
+		"@infra-ts/core": "0.5.0",
 		"esbuild": "^0.24.0",
 		"fflate": "^0.8.2",
 		"zod": "^4.0.0"
