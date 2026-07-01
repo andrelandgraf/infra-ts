@@ -1,0 +1,37 @@
+---
+title: Sanity
+description: Provision Sanity datasets, API tokens, and CORS origins as typed infra-ts entities.
+sidebar:
+  label: Sanity
+---
+
+Sanity datasets, API tokens, and CORS origins for an existing project.
+
+- **Import:** `import { SanityDataset, SanityToken } from "infra-ts/sanity";`
+- **Credentials:** `SANITY_AUTH_TOKEN`. Optional `SANITY_API_HOST`.
+
+The Sanity project id is passed per entity (`projectId`).
+
+## Entities
+
+| Entity             | Provisions                | Key options                                  | Env outputs        |
+| ------------------ | ------------------------- | -------------------------------------------- | ------------------ |
+| `SanityDataset`    | A dataset                 | `projectId` · `dataset?` · `aclMode?`        | `SANITY_DATASET`   |
+| `SanityToken`      | An API token (write-once) | `projectId` · `roleName?`                    | `SANITY_API_TOKEN` |
+| `SanityCorsOrigin` | A CORS origin             | `projectId` · `origin` · `allowCredentials?` | —                  |
+
+## Example
+
+```ts
+import { defineInfra } from "infra-ts";
+import { SanityDataset, SanityToken } from "infra-ts/sanity";
+
+const dataset = new SanityDataset({
+	name: "production",
+	projectId: "p1",
+	aclMode: "public",
+});
+const token = new SanityToken({ name: "deploy", projectId: "p1" });
+
+export default defineInfra({ entities: [dataset, token] });
+```

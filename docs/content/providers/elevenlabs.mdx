@@ -1,0 +1,32 @@
+---
+title: ElevenLabs
+description: Provision ElevenLabs Conversational AI agents as typed infra-ts entities.
+sidebar:
+  label: ElevenLabs
+---
+
+ElevenLabs Conversational AI agents.
+
+- **Import:** `import { ElevenLabsAgent } from "infra-ts/elevenlabs";`
+- **Credentials:** `ELEVENLABS_API_KEY`.
+
+## Entities
+
+| Entity            | Provisions                | Key options                                                      | Env outputs           |
+| ----------------- | ------------------------- | ---------------------------------------------------------------- | --------------------- |
+| `ElevenLabsAgent` | A Conversational AI agent | `prompt?` · `firstMessage?` · `voiceId?` · `conversationConfig?` | `ELEVENLABS_AGENT_ID` |
+
+## Example
+
+```ts
+import { defineInfra } from "infra-ts";
+import { ElevenLabsAgent } from "infra-ts/elevenlabs";
+
+const agent = new ElevenLabsAgent({
+	name: "support",
+	prompt: "You are a helpful support agent.",
+	firstMessage: "Hi! How can I help?",
+});
+
+export default defineInfra({ entities: [agent] });
+```

@@ -1,0 +1,39 @@
+---
+title: Stripe
+description: Provision Stripe webhook endpoints, products, and prices as typed infra-ts entities.
+sidebar:
+  label: Stripe
+---
+
+Stripe webhook endpoints, products, and prices via the Stripe REST API.
+
+- **Import:** `import { StripeProduct, StripePrice, StripeWebhookEndpoint } from "infra-ts/stripe";`
+- **Credentials:** `STRIPE_SECRET_KEY`.
+
+> Looking to provision your whole stack (databases, hosting, …) and pay through Stripe? That's [Stripe Projects](/providers/stripe-projects), a separate provider.
+
+## Entities
+
+| Entity                  | Provisions                                     | Key options                                          | Env outputs             |
+| ----------------------- | ---------------------------------------------- | ---------------------------------------------------- | ----------------------- |
+| `StripeWebhookEndpoint` | A webhook endpoint (write-once signing secret) | `url` · `events?` · `description?`                   | `STRIPE_WEBHOOK_SECRET` |
+| `StripeProduct`         | A product                                      | `productName?`                                       | `STRIPE_PRODUCT_ID`     |
+| `StripePrice`           | A price (immutable)                            | `product` · `currency` · `unitAmount` · `recurring?` | `STRIPE_PRICE_ID`       |
+
+## Example
+
+```ts
+import { defineInfra } from "infra-ts";
+import { StripePrice, StripeProduct } from "infra-ts/stripe";
+
+const pro = new StripeProduct({ name: "pro", productName: "Pro plan" });
+const monthly = new StripePrice({
+	name: "pro-monthly",
+	product: pro.env.stripeProductId,
+	currency: "usd",
+	unitAmount: 2000,
+	recurring: { interval: "month" },
+});
+
+export default defineInfra({ entities: [pro, monthly] });
+```

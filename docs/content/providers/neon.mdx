@@ -1,0 +1,39 @@
+---
+title: Neon
+description: Provision Neon Postgres projects, connection strings, read replicas, Neon Auth, and the Data API as typed infra-ts entities.
+sidebar:
+  label: Neon
+---
+
+Typed wrappers around the Neon management API — projects, pooled/unpooled connection strings, read replicas, Neon Auth, and the Data API.
+
+- **Import:** `import { NeonOrg, NeonProject, NeonPostgres } from "infra-ts/neon";`
+- **Credentials:** `NEON_API_KEY` (falls back to the `neonctl` CLI login; `infra login` runs the OAuth flow). Optional `NEON_API_HOST`.
+
+## Entities
+
+| Entity            | Provisions                                               | Key options                                                                    | Env outputs                                     |
+| ----------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------- |
+| `NeonOrg`         | Org scope for `infra link` (an account, creates nothing) | `scope?`                                                                       | —                                               |
+| `NeonProject`     | A Neon project                                           | `org` · `region?` · `pgVersion?` · `compute?` · `ttl?` · `logicalReplication?` | —                                               |
+| `NeonPostgres`    | Pooled + unpooled connection URIs for the default branch | `projectId` · `database?` · `role?`                                            | `DATABASE_URL`, `DATABASE_URL_UNPOOLED`         |
+| `NeonReadReplica` | A read-only compute endpoint + URIs                      | `projectId` · `branch?` · `compute?`                                           | `READ_REPLICA_URL`, `READ_REPLICA_URL_UNPOOLED` |
+| `NeonAuth`        | Neon Auth (Better Auth) on the default branch            | `projectId`                                                                    | `AUTH_BASE_URL`, `AUTH_JWKS_URL`                |
+| `NeonDataApi`     | Neon Data API (PostgREST) on the default branch          | `projectId` · `authProvider?` · `jwksUrl?`                                     | `DATA_API_URL`                                  |
+
+## Example
+
+```ts
+import { defineInfra } from "infra-ts";
+import { NeonOrg, NeonPostgres, NeonProject } from "infra-ts/neon";
+
+const neon = new NeonOrg({ name: "neon" });
+const project = new NeonProject({
+	name: "app",
+	org: neon.id,
+	region: "aws-us-east-1",
+});
+const db = new NeonPostgres({ name: "db", projectId: project.id });
+
+export default defineInfra({ entities: [neon, project, db] });
+```

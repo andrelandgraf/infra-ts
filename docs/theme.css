@@ -7,79 +7,90 @@
 
 /* ---- Light ---- */
 :root {
-  --blume-background: oklch(0.99 0.003 240);
-  --blume-foreground: oklch(0.22 0.03 262);
-  --blume-muted: oklch(0.965 0.01 240);
-  --blume-muted-foreground: oklch(0.5 0.025 255);
-  --blume-border: oklch(0.55 0.04 235 / 0.18);
+	--blume-background: oklch(0.99 0.003 240);
+	--blume-foreground: oklch(0.22 0.03 262);
+	--blume-muted: oklch(0.965 0.01 240);
+	--blume-muted-foreground: oklch(0.5 0.025 255);
+	--blume-border: oklch(0.55 0.04 235 / 0.18);
 
-  --blume-accent: oklch(0.58 0.18 250);
-  --blume-accent-foreground: oklch(1 0 0);
-  --blume-action: oklch(0.68 0.13 196);
-  --blume-action-foreground: oklch(0.16 0.03 258);
+	--blume-accent: oklch(0.58 0.18 250);
+	--blume-accent-foreground: oklch(1 0 0);
+	--blume-action: oklch(0.68 0.13 196);
+	--blume-action-foreground: oklch(0.16 0.03 258);
 
-  --blume-code-background: oklch(0.975 0.01 240);
+	--blume-code-background: oklch(0.975 0.01 240);
 
-  /* Just the slightest hum of color — a soft glow, no grid. */
-  --blume-background-decoration:
-    radial-gradient(64rem 44rem at 50% -26%, oklch(0.6 0.16 250 / 0.035), transparent 70%);
-  --blume-background-decoration-repeat: no-repeat;
-  --blume-background-decoration-size: auto;
+	/* Just the slightest hum of color — a soft glow, no grid. */
+	--blume-background-decoration: radial-gradient(
+		64rem 44rem at 50% -26%,
+		oklch(0.6 0.16 250 / 0.035),
+		transparent 70%
+	);
+	--blume-background-decoration-repeat: no-repeat;
+	--blume-background-decoration-size: auto;
 }
 
 /* ---- Dark ---- */
 :root[data-theme="dark"] {
-  --blume-background: oklch(0.16 0.026 262);
-  --blume-foreground: oklch(0.95 0.01 230);
-  --blume-muted: oklch(0.21 0.025 262);
-  --blume-muted-foreground: oklch(0.72 0.025 235);
-  --blume-border: oklch(0.7 0.04 235 / 0.2);
+	--blume-background: oklch(0.16 0.026 262);
+	--blume-foreground: oklch(0.95 0.01 230);
+	--blume-muted: oklch(0.21 0.025 262);
+	--blume-muted-foreground: oklch(0.72 0.025 235);
+	--blume-border: oklch(0.7 0.04 235 / 0.2);
 
-  --blume-accent: oklch(0.76 0.16 240);
-  --blume-accent-foreground: oklch(0.15 0.03 262);
-  --blume-action: oklch(0.85 0.14 190);
-  --blume-action-foreground: oklch(0.15 0.03 262);
+	--blume-accent: oklch(0.76 0.16 240);
+	--blume-accent-foreground: oklch(0.15 0.03 262);
+	--blume-action: oklch(0.85 0.14 190);
+	--blume-action-foreground: oklch(0.15 0.03 262);
 
-  --blume-code-background: oklch(0.185 0.028 264);
+	--blume-code-background: oklch(0.185 0.028 264);
 
-  --blume-code-highlight: oklch(0.76 0.16 240 / 0.14);
-  --blume-code-highlight-border: oklch(0.76 0.16 240 / 0.5);
+	--blume-code-highlight: oklch(0.76 0.16 240 / 0.14);
+	--blume-code-highlight-border: oklch(0.76 0.16 240 / 0.5);
 
-  /* Just the slightest hum of color — a soft glow, no grid. */
-  --blume-background-decoration:
-    radial-gradient(70rem 48rem at 50% -26%, oklch(0.62 0.16 250 / 0.05), transparent 72%);
-  --blume-background-decoration-repeat: no-repeat;
-  --blume-background-decoration-size: auto;
+	/* Just the slightest hum of color — a soft glow, no grid. */
+	--blume-background-decoration: radial-gradient(
+		70rem 48rem at 50% -26%,
+		oklch(0.62 0.16 250 / 0.05),
+		transparent 72%
+	);
+	--blume-background-decoration-repeat: no-repeat;
+	--blume-background-decoration-size: auto;
 }
 
 /* Neon text selection — a small, pleasant cyber touch. */
 ::selection {
-  background: color-mix(in oklab, var(--blume-accent) 32%, transparent);
-  color: var(--blume-foreground);
+	background: color-mix(in oklab, var(--blume-accent) 32%, transparent);
+	color: var(--blume-foreground);
 }
 
 /* Header hairline. */
 header.sticky {
-  border-bottom: 1px solid var(--blume-border);
+	border-bottom: 1px solid var(--blume-border);
 }
 
 /* Body links read in neon blue with a turquoise underline (no glow). Heading
    anchors are excluded so headings keep their own styling. */
 .prose :where(a):not([data-blume-card]):not(.blume-heading-anchor) {
-  color: var(--blume-accent);
-  text-decoration-color: color-mix(in oklab, var(--blume-action) 65%, transparent);
+	color: var(--blume-accent);
+	text-decoration-color: color-mix(
+		in oklab,
+		var(--blume-action) 65%,
+		transparent
+	);
 }
 
 /* Active nav / sidebar / TOC items get accent color (no glow). */
 [aria-current="page"] {
-  color: var(--blume-accent) !important;
+	color: var(--blume-accent) !important;
 }
 
 /* Thin accent scrollbar (WebKit + Firefox) — subtle. */
 * {
-  scrollbar-color: color-mix(in oklab, var(--blume-accent) 35%, transparent) transparent;
+	scrollbar-color: color-mix(in oklab, var(--blume-accent) 35%, transparent)
+		transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: color-mix(in oklab, var(--blume-accent) 32%, transparent);
-  border-radius: 999px;
+	background: color-mix(in oklab, var(--blume-accent) 32%, transparent);
+	border-radius: 999px;
 }

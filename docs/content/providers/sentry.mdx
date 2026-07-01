@@ -1,0 +1,38 @@
+---
+title: Sentry
+description: Provision Sentry teams, projects, and client keys (DSNs) as typed infra-ts entities.
+sidebar:
+  label: Sentry
+---
+
+Sentry teams, projects, and client keys (DSNs).
+
+- **Import:** `import { SentryProject, SentryClientKey } from "infra-ts/sentry";`
+- **Credentials:** `SENTRY_AUTH_TOKEN`. Optional `SENTRY_API_HOST`.
+
+The Sentry org slug is passed per entity (`org`), so there's no account/link step.
+
+## Entities
+
+| Entity            | Provisions         | Key options                  | Env outputs  |
+| ----------------- | ------------------ | ---------------------------- | ------------ |
+| `SentryTeam`      | A team             | `org`                        | —            |
+| `SentryProject`   | A project          | `org` · `team` · `platform?` | —            |
+| `SentryClientKey` | A client key / DSN | `org` · `project`            | `SENTRY_DSN` |
+
+## Example
+
+```ts
+import { defineInfra } from "infra-ts";
+import { SentryClientKey, SentryProject, SentryTeam } from "infra-ts/sentry";
+
+const team = new SentryTeam({ name: "core", org: "acme" });
+const project = new SentryProject({ name: "app", org: "acme", team: team.id });
+const dsn = new SentryClientKey({
+	name: "app-dsn",
+	org: "acme",
+	project: project.id,
+});
+
+export default defineInfra({ entities: [team, project, dsn] });
+```

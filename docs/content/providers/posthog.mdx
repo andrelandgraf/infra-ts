@@ -1,0 +1,34 @@
+---
+title: PostHog
+description: Provision PostHog projects (ingestion key + host) and feature flags as typed infra-ts entities.
+sidebar:
+  label: PostHog
+---
+
+PostHog projects (ingestion key + host) and feature flags.
+
+- **Import:** `import { PosthogProject, PosthogFeatureFlag } from "infra-ts/posthog";`
+- **Credentials:** `POSTHOG_API_KEY` (a personal API key). Optional `POSTHOG_API_HOST` (default `https://us.posthog.com`).
+
+## Entities
+
+| Entity               | Provisions     | Key options                      | Env outputs                   |
+| -------------------- | -------------- | -------------------------------- | ----------------------------- |
+| `PosthogProject`     | A project      | `org` · `clientHost?`            | `POSTHOG_KEY`, `POSTHOG_HOST` |
+| `PosthogFeatureFlag` | A feature flag | `projectId` · `key?` · `active?` | —                             |
+
+## Example
+
+```ts
+import { defineInfra } from "infra-ts";
+import { PosthogFeatureFlag, PosthogProject } from "infra-ts/posthog";
+
+const analytics = new PosthogProject({ name: "analytics", org: "acme" });
+const flag = new PosthogFeatureFlag({
+	name: "new-checkout",
+	projectId: analytics.id,
+	active: true,
+});
+
+export default defineInfra({ entities: [analytics, flag] });
+```

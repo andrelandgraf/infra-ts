@@ -1,0 +1,36 @@
+---
+title: Statsig
+description: Provision Statsig feature gates, dynamic configs, and experiments as typed infra-ts entities.
+sidebar:
+  label: Statsig
+---
+
+Statsig Console API resources: feature gates, dynamic configs, and experiments.
+
+- **Import:** `import { StatsigGate, StatsigDynamicConfig } from "infra-ts/statsig";`
+- **Credentials:** `STATSIG_CONSOLE_API_KEY`. Optional `STATSIG_API_HOST`.
+
+All three share `description?` and `isEnabled?` options and expose no env output.
+
+## Entities
+
+| Entity                 | Provisions       | Key options                   | Env outputs |
+| ---------------------- | ---------------- | ----------------------------- | ----------- |
+| `StatsigGate`          | A feature gate   | `description?` · `isEnabled?` | —           |
+| `StatsigDynamicConfig` | A dynamic config | `description?` · `isEnabled?` | —           |
+| `StatsigExperiment`    | An experiment    | `description?` · `isEnabled?` | —           |
+
+## Example
+
+```ts
+import { defineInfra } from "infra-ts";
+import { StatsigGate } from "infra-ts/statsig";
+
+const gate = new StatsigGate({
+	name: "new-checkout",
+	description: "Roll out the redesigned checkout",
+	isEnabled: false,
+});
+
+export default defineInfra({ entities: [gate] });
+```

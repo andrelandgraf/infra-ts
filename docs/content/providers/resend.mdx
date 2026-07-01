@@ -1,0 +1,32 @@
+---
+title: Resend
+description: Provision Resend sending domains, API keys, audiences, and webhooks as typed infra-ts entities.
+sidebar:
+  label: Resend
+---
+
+Resend sending domains, API keys, audiences, and webhooks.
+
+- **Import:** `import { ResendDomain, ResendApiKey } from "infra-ts/resend";`
+- **Credentials:** `RESEND_API_KEY`.
+
+## Entities
+
+| Entity           | Provisions                    | Key options              | Env outputs              |
+| ---------------- | ----------------------------- | ------------------------ | ------------------------ |
+| `ResendDomain`   | A sending domain              | `domain` · `region?`     | `RESEND_DOMAIN_ID`       |
+| `ResendApiKey`   | An API key (write-once token) | `permission?`            | `RESEND_SENDING_API_KEY` |
+| `ResendAudience` | An audience                   | —                        | `RESEND_AUDIENCE_ID`     |
+| `ResendWebhook`  | A webhook                     | `endpointUrl` · `events` | —                        |
+
+## Example
+
+```ts
+import { defineInfra } from "infra-ts";
+import { ResendApiKey, ResendDomain } from "infra-ts/resend";
+
+const domain = new ResendDomain({ name: "mail", domain: "mail.acme.com" });
+const key = new ResendApiKey({ name: "sending", permission: "sending_access" });
+
+export default defineInfra({ entities: [domain, key] });
+```

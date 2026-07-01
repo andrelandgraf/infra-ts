@@ -1,0 +1,87 @@
+---
+title: Providers
+description: The providers infra-ts ships with — Neon, Vercel, Upstash, Stripe, Stripe Projects, and more — and what each one provisions.
+sidebar:
+  label: Overview
+  order: 0
+---
+
+A provider is a small package that implements the infra-ts [entity contract](/standard). Most are a thin wrapper over the provider's REST API. A few (like `stripe-projects`) instead **compose a vendor CLI**, so you can declare infra that another tool provisions. Either way, entities persist only identity state, stay idempotent, and emit typed env.
+
+The umbrella `infra-ts` package bundles the first set as subpath imports:
+
+```ts
+import { NeonProject } from "infra-ts/neon";
+import { VercelProject } from "infra-ts/vercel";
+import { UpstashRedis } from "infra-ts/upstash";
+```
+
+## Directory
+
+<CardGroup cols={2}>
+	<Card title="Neon" href="/providers/neon" icon="database">
+		Postgres projects, connection strings, read replicas, Neon Auth, Data API.
+	</Card>
+	<Card title="Vercel" href="/providers/vercel" icon="cloud">
+		Projects, env vars, domains, edge config, webhooks, deployments.
+	</Card>
+	<Card title="Upstash" href="/providers/upstash" icon="server">
+		Redis, Vector, and QStash queues, schedules, and topics.
+	</Card>
+	<Card title="Stripe" href="/providers/stripe" icon="credit-card">
+		Webhook endpoints, products, and prices.
+	</Card>
+	<Card title="Stripe Projects" href="/providers/stripe-projects" icon="boxes">
+		Provision across providers through the Stripe Projects catalog.
+	</Card>
+	<Card title="Resend" href="/providers/resend" icon="mail">
+		Sending domains, API keys, audiences, and webhooks.
+	</Card>
+	<Card title="Mux" href="/providers/mux" icon="video">
+		Signing keys, live streams, playback restrictions, simulcast targets.
+	</Card>
+	<Card title="Sentry" href="/providers/sentry" icon="bug">
+		Teams, projects, and client keys (DSNs).
+	</Card>
+	<Card title="PostHog" href="/providers/posthog" icon="chart-line">
+		Projects (ingestion key + host) and feature flags.
+	</Card>
+	<Card title="OpenAI" href="/providers/openai" icon="sparkles">
+		Organization projects and service-account API keys.
+	</Card>
+	<Card title="ElevenLabs" href="/providers/elevenlabs" icon="mic">
+		Conversational AI agents.
+	</Card>
+	<Card title="WorkOS" href="/providers/workos" icon="building">
+		Organizations for enterprise auth.
+	</Card>
+	<Card title="Sanity" href="/providers/sanity" icon="pen-tool">
+		Datasets, API tokens, and CORS origins.
+	</Card>
+	<Card title="Statsig" href="/providers/statsig" icon="flag">
+		Feature gates, dynamic configs, and experiments.
+	</Card>
+	<Card title="Dub" href="/providers/dub" icon="link">
+		Short-link domains, tags, and links.
+	</Card>
+</CardGroup>
+
+## How providers work
+
+Every entity implements the same small lifecycle:
+
+- `read` fetches live remote state
+- `diff` compares your desired config to that state
+- `provision` creates or updates the resource (idempotent)
+- `pullEnv` returns the typed env it exposes
+- `deprovision` tears it down
+
+The engine handles graph ordering, refs, state I/O, env output, hooks, and CLI rendering. See [The standard](/standard) for the full contract and [Core concepts](/concepts) for entities, refs, and identity state.
+
+### REST vs CLI (transport is the entity's choice)
+
+For **reconciled config** (projects, env vars, domains) providers stay thin: `typed options → REST read → pure diff → REST mutation`. For **imperative, vendor-owned actions** — building, deploying, or provisioning through another tool — an entity can instead compose the vendor CLI via an `exec` capability, declaring the CLIs it needs with `requiredTools()` (the engine detects and installs them, preferring ephemeral `npx`). `VercelDeployment` uses this to delegate to the `vercel` CLI; the [`stripe-projects`](/providers/stripe-projects) provider uses it to provision through `stripe projects`. Either way an entity still persists only identity state and emits typed env — so REST vs CLI is a free, per-entity choice.
+
+## Credentials
+
+Each provider resolves credentials from the environment (or a provider CLI's login cache) — no secrets are ever written to infra-ts state. The credential env var is listed on each provider's page (e.g. `NEON_API_KEY`, `VERCEL_TOKEN`). Set them in your shell/CI, or run `infra login` for providers that support CLI OAuth (Neon, Vercel).

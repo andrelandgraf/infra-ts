@@ -1,0 +1,32 @@
+---
+title: Mux
+description: Provision Mux signing keys, live streams, playback restrictions, and simulcast targets as typed infra-ts entities.
+sidebar:
+  label: Mux
+---
+
+Mux signing keys, live streams, playback restrictions, and simulcast targets.
+
+- **Import:** `import { MuxSigningKey, MuxLiveStream } from "infra-ts/mux";`
+- **Credentials:** `MUX_TOKEN_ID` + `MUX_TOKEN_SECRET`.
+
+## Entities
+
+| Entity                         | Provisions                             | Key options                           | Env outputs                                               |
+| ------------------------------ | -------------------------------------- | ------------------------------------- | --------------------------------------------------------- |
+| `MuxSigningKey`                | A signing key (write-once private key) | —                                     | `MUX_SIGNING_KEY_ID`, `MUX_PRIVATE_KEY`                   |
+| `MuxLiveStream`                | A live stream                          | `playbackPolicy?` · `latencyMode?`    | `MUX_LIVE_STREAM_ID`, `MUX_STREAM_KEY`, `MUX_PLAYBACK_ID` |
+| `MuxPlaybackRestriction`       | A referrer playback restriction        | `allowedDomains` · `allowNoReferrer?` | `MUX_PLAYBACK_RESTRICTION_ID`                             |
+| `MuxLiveStreamSimulcastTarget` | A simulcast target on a live stream    | `liveStreamId` · `url` · `streamKey?` | —                                                         |
+
+## Example
+
+```ts
+import { defineInfra } from "infra-ts";
+import { MuxLiveStream, MuxSigningKey } from "infra-ts/mux";
+
+const key = new MuxSigningKey({ name: "signing" });
+const stream = new MuxLiveStream({ name: "live", latencyMode: "low" });
+
+export default defineInfra({ entities: [key, stream] });
+```

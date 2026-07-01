@@ -1,0 +1,32 @@
+---
+title: WorkOS
+description: Provision WorkOS organizations as typed infra-ts entities.
+sidebar:
+  label: WorkOS
+---
+
+WorkOS organizations for enterprise auth.
+
+- **Import:** `import { WorkosOrganization } from "infra-ts/workos";`
+- **Credentials:** `WORKOS_API_KEY`.
+
+## Entities
+
+| Entity               | Provisions            | Key options                 | Env outputs              |
+| -------------------- | --------------------- | --------------------------- | ------------------------ |
+| `WorkosOrganization` | A WorkOS organization | `displayName?` · `domains?` | `WORKOS_ORGANIZATION_ID` |
+
+## Example
+
+```ts
+import { defineInfra } from "infra-ts";
+import { WorkosOrganization } from "infra-ts/workos";
+
+const org = new WorkosOrganization({
+	name: "acme",
+	displayName: "Acme, Inc.",
+	domains: ["acme.com"],
+});
+
+export default defineInfra({ entities: [org] });
+```

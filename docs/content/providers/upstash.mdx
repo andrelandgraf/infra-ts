@@ -1,0 +1,33 @@
+---
+title: Upstash
+description: Provision Upstash Redis, Vector, and QStash queues, schedules, and topics as typed infra-ts entities.
+sidebar:
+  label: Upstash
+---
+
+Upstash Redis and Vector databases, plus QStash queues, schedules, and topics.
+
+- **Import:** `import { UpstashRedis, UpstashVector } from "infra-ts/upstash";`
+- **Credentials:** Redis & Vector use `UPSTASH_EMAIL` + `UPSTASH_API_KEY`. QStash entities use `QSTASH_TOKEN`.
+
+## Entities
+
+| Entity                  | Provisions                 | Key options                                           | Env outputs                                                       |
+| ----------------------- | -------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------- |
+| `UpstashRedis`          | A Redis database           | `region?` · `tls?`                                    | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `REDIS_URL` |
+| `UpstashVector`         | A Vector index             | `dimensionCount?` · `similarityFunction?` · `region?` | `UPSTASH_VECTOR_REST_URL`, `UPSTASH_VECTOR_REST_TOKEN`            |
+| `UpstashQStashQueue`    | A QStash queue             | `parallelism?`                                        | `QSTASH_QUEUE_NAME`                                               |
+| `UpstashQStashSchedule` | A QStash cron schedule     | `destination` · `cron`                                | —                                                                 |
+| `UpstashQStashTopic`    | A QStash topic (URL group) | `endpoints`                                           | `QSTASH_TOPIC_NAME`                                               |
+
+## Example
+
+```ts
+import { defineInfra } from "infra-ts";
+import { UpstashRedis, UpstashVector } from "infra-ts/upstash";
+
+const cache = new UpstashRedis({ name: "cache", region: "us-east-1" });
+const vectors = new UpstashVector({ name: "vec", dimensionCount: 1536 });
+
+export default defineInfra({ entities: [cache, vectors] });
+```

@@ -1,0 +1,46 @@
+---
+title: Vercel
+description: Provision Vercel projects, env vars, domains, edge config, webhooks, and deployments as typed infra-ts entities.
+sidebar:
+  label: Vercel
+---
+
+Vercel projects and the resources around them — env vars, domains, Edge Config, DNS, webhooks, log drains, access groups, and deployments.
+
+- **Import:** `import { VercelTeam, VercelProject } from "infra-ts/vercel";`
+- **Credentials:** `VERCEL_TOKEN` (falls back to the Vercel CLI login; `infra login` supported). Optional `VERCEL_API_HOST`.
+
+## Entities
+
+| Entity              | Provisions                                   | Key options                                                         | Env outputs                  |
+| ------------------- | -------------------------------------------- | ------------------------------------------------------------------- | ---------------------------- |
+| `VercelTeam`        | Team scope for `infra link` (an account)     | `scope?`                                                            | —                            |
+| `VercelProject`     | A project + settings, env vars, domains      | `team` · `framework?` · `settings?` · `env?` · `domains?`           | `PROJECT_ID`, `PROJECT_NAME` |
+| `VercelEdgeConfig`  | An Edge Config store (+ items)               | `team` · `slug` · `items?`                                          | `EDGE_CONFIG_ID`             |
+| `VercelWebhook`     | A team webhook                               | `team` · `url` · `events` · `projectIds?`                           | `WEBHOOK_ID`                 |
+| `VercelDnsRecord`   | A DNS record on a domain                     | `team` · `domain` · `type` · `recordName` · `value`                 | —                            |
+| `VercelLogDrain`    | A log drain                                  | `team` · `url` · `sources?`                                         | —                            |
+| `VercelAccessGroup` | An access group                              | `team` · `groupName?`                                               | `VERCEL_ACCESS_GROUP_ID`     |
+| `VercelDeployment`  | Deploys source to a project (CLI by default) | `team` · `project` · `cwd?` · `mode?` · `production?` · `prebuilt?` | `DEPLOYMENT_URL`             |
+
+`VercelDeployment` composes the `vercel` CLI (`mode: "cli"`, the default) via the engine's exec capability; pass `mode: "rest"` to upload through the API instead. It's the reference example of a command-backed entity — see [How providers work](/providers#rest-vs-cli-transport-is-the-entitys-choice).
+
+## Example
+
+```ts
+import { defineInfra } from "infra-ts";
+import { VercelProject, VercelTeam } from "infra-ts/vercel";
+import { NeonPostgres } from "infra-ts/neon";
+
+const vercel = new VercelTeam({ name: "vercel" });
+const db = new NeonPostgres({ name: "db", projectId: "…" });
+
+const web = new VercelProject({
+	name: "web",
+	team: vercel.id,
+	framework: "nextjs",
+	env: { DATABASE_URL: db.env.databaseUrl },
+});
+
+export default defineInfra({ entities: [vercel, db, web] });
+```

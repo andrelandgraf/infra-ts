@@ -1,0 +1,65 @@
+---
+title: Stripe Projects
+description: Declare infra that Stripe Projects provisions across ~45 providers — driven through the Stripe CLI, with identity by name and no captured state.
+sidebar:
+  label: Stripe Projects
+---
+
+Sometimes you don't want to talk to each provider at all — you want one place to provision (and pay for) your whole stack. [Stripe Projects](https://projects.dev) does exactly that across ~45 providers, and `infra-ts/stripe-projects` lets you declare that infra as typed entities.
+
+- **Import:** `import { NeonPostgres, UpstashRedis, StripeProjectsService } from "infra-ts/stripe-projects";`
+- **Credentials:** none — auth is your local Stripe CLI session. The engine detects and offers to install the Stripe CLI + `projects` plugin (`brew install stripe/stripe-cli/stripe && stripe plugin install projects`).
+
+## How it's different
+
+These entities don't wrap a REST API — they **compose the Stripe CLI** (`stripe projects add/status/upgrade/remove/env`):
+
+- **Identity is the entity `name`.** `apply` runs `stripe projects add … --name db`; `plan` reads live state from `stripe projects status`. Nothing is written to `.infra` — Stripe Projects' own `.projects/` manifest stays its own business.
+- **No captured credentials or state.** infra-ts owns only the composition graph; the Stripe CLI owns provisioning, billing, and credential distribution.
+- **Typed produced env.** `db.env.databaseUrl` wires into any consumer just like the REST providers. Stripe Projects syncs the real values into your `.env` (`env --pull`); infra-ts reads them back by their OS key.
+
+This is the "compose native tools, own only the graph" model — see the repo's `DESIGN.md`.
+
+## Entities
+
+| Entity                  | Provisions                                          | Key options                                   | Env outputs                          |
+| ----------------------- | --------------------------------------------------- | --------------------------------------------- | ------------------------------------ |
+| `NeonPostgres`          | Neon Postgres via Stripe Projects (`neon/postgres`) | `tier?`                                       | `DATABASE_URL`                       |
+| `UpstashRedis`          | Upstash Redis via Stripe Projects (`upstash/redis`) | `tier?`                                       | `REDIS_REST_URL`, `REDIS_REST_TOKEN` |
+| `StripeProjectsService` | Any `provider/service` in the catalog               | `provider` · `service` · `tier?` · `exposes?` | declared via `exposes`               |
+
+`StripeProjectsService` is the escape hatch for anything without a typed wrapper yet — declare the env fields it exposes with `exposes`. The typed subset is intentionally small to start and will grow.
+
+## Example
+
+```ts
+import { defineInfra } from "infra-ts";
+import {
+	NeonPostgres,
+	StripeProjectsService,
+	UpstashRedis,
+} from "infra-ts/stripe-projects";
+import { VercelProject } from "infra-ts/vercel";
+
+const db = new NeonPostgres({ name: "db", tier: "launch" });
+const cache = new UpstashRedis({ name: "cache" });
+const search = new StripeProjectsService({
+	name: "search",
+	provider: "algolia",
+	service: "application",
+	exposes: ["algoliaAppId", "algoliaApiKey"],
+});
+
+export default defineInfra({
+	entities: [
+		db,
+		cache,
+		search,
+		new VercelProject({
+			name: "web",
+			team: "team_x",
+			env: { DATABASE_URL: db.env.databaseUrl },
+		}),
+	],
+});
+```

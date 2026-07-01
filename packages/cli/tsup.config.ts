@@ -20,6 +20,7 @@ export default defineConfig({
 		statsig: "src/statsig.ts",
 		dub: "src/dub.ts",
 		stripe: "src/stripe.ts",
+		"stripe-projects": "src/stripe-projects.ts",
 		posthog: "src/posthog.ts",
 		elevenlabs: "src/elevenlabs.ts",
 		openai: "src/openai.ts",

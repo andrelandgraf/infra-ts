@@ -16,6 +16,7 @@
 			"@infra-ts/statsig": ["packages/statsig/src/index.ts"],
 			"@infra-ts/dub": ["packages/dub/src/index.ts"],
 			"@infra-ts/stripe": ["packages/stripe/src/index.ts"],
+			"@infra-ts/stripe-projects": ["packages/stripe-projects/src/index.ts"],
 			"@infra-ts/posthog": ["packages/posthog/src/index.ts"],
 			"@infra-ts/elevenlabs": ["packages/elevenlabs/src/index.ts"],
 			"@infra-ts/openai": ["packages/openai/src/index.ts"],

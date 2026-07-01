@@ -40,6 +40,7 @@
         "@infra-ts/sentry": "0.5.0",
         "@infra-ts/statsig": "0.5.0",
         "@infra-ts/stripe": "0.5.0",
+        "@infra-ts/stripe-projects": "0.5.0",
         "@infra-ts/upstash": "0.5.0",
         "@infra-ts/vercel": "0.5.0",
         "@infra-ts/workos": "0.5.0",
@@ -141,6 +142,14 @@
     },
     "packages/stripe": {
       "name": "@infra-ts/stripe",
+      "version": "0.5.0",
+      "dependencies": {
+        "@infra-ts/core": "0.5.0",
+        "zod": "^4.0.0",
+      },
+    },
+    "packages/stripe-projects": {
+      "name": "@infra-ts/stripe-projects",
       "version": "0.5.0",
       "dependencies": {
         "@infra-ts/core": "0.5.0",
@@ -254,6 +263,8 @@
     "@infra-ts/statsig": ["@infra-ts/statsig@workspace:packages/statsig"],
 
     "@infra-ts/stripe": ["@infra-ts/stripe@workspace:packages/stripe"],
+
+    "@infra-ts/stripe-projects": ["@infra-ts/stripe-projects@workspace:packages/stripe-projects"],
 
     "@infra-ts/upstash": ["@infra-ts/upstash@workspace:packages/upstash"],
 

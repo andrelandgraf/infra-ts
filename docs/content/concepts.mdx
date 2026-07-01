@@ -97,6 +97,13 @@ plan / apply / status / checkout
 
 If the remote drifted, infra-ts sees that drift from the provider API directly. If a resource was renamed or recreated, the identity binding tells infra-ts which resource to compare.
 
+## Composition & provider-owned state
+
+infra-ts is a composition layer over the tools you already use — it doesn't try to own everything. A provider can wrap a REST API directly, or **compose a vendor CLI** (like `stripe-projects` driving `stripe projects …`). Either way, the same rules hold:
+
+- **Compose, don't capture.** The vendor CLI stays fully usable; infra-ts owns only the composition graph in `infra.ts`. Delete `infra.ts` and your native tools still work.
+- **Providers own where their state lives.** A provider's `read`/`provision` decide whether identity comes from a native file, a live CLI read, or infra-ts's own state file. When identity can be resolved live (e.g. by the entity's `name`), the provider persists nothing at all — and even then, infra-ts state only ever holds ids and content hashes, never secrets or attributes.
+
 ## Environments
 
 Every command targets an environment:

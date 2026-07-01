@@ -1,0 +1,30 @@
+---
+title: OpenAI
+description: Provision OpenAI organization projects and service-account API keys as typed infra-ts entities.
+sidebar:
+  label: OpenAI
+---
+
+OpenAI Administration API — organization projects and project service-account keys.
+
+- **Import:** `import { OpenAiProject, OpenAiServiceAccount } from "infra-ts/openai";`
+- **Credentials:** `OPENAI_ADMIN_KEY` (an admin key, `sk-admin-…`).
+
+## Entities
+
+| Entity                 | Provisions                               | Key options    | Env outputs      |
+| ---------------------- | ---------------------------------------- | -------------- | ---------------- |
+| `OpenAiProject`        | An organization project                  | `projectName?` | —                |
+| `OpenAiServiceAccount` | A service account + API key (write-once) | `project`      | `OPENAI_API_KEY` |
+
+## Example
+
+```ts
+import { defineInfra } from "infra-ts";
+import { OpenAiProject, OpenAiServiceAccount } from "infra-ts/openai";
+
+const project = new OpenAiProject({ name: "app", projectName: "My App" });
+const svc = new OpenAiServiceAccount({ name: "svc", project: project.id });
+
+export default defineInfra({ entities: [project, svc] });
+```

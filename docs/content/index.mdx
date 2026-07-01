@@ -87,6 +87,8 @@ import { defineInfra, parseEnv } from "infra-ts";
 import { NeonProject } from "infra-ts/neon";
 import { VercelProject } from "infra-ts/vercel";
 import { StripeProduct } from "infra-ts/stripe";
+// or let Stripe Projects provision across providers:
+import { NeonPostgres } from "infra-ts/stripe-projects";
 ```
 
 It's early days, but the idea is deliberately simple: typed entities, live REST reconciliation, no attribute state.

@@ -70,6 +70,10 @@
 			"types": "./dist/stripe.d.ts",
 			"import": "./dist/stripe.js"
 		},
+		"./stripe-projects": {
+			"types": "./dist/stripe-projects.d.ts",
+			"import": "./dist/stripe-projects.js"
+		},
 		"./posthog": {
 			"types": "./dist/posthog.d.ts",
 			"import": "./dist/posthog.js"
@@ -115,6 +119,7 @@
 		"@infra-ts/sentry": "0.5.0",
 		"@infra-ts/statsig": "0.5.0",
 		"@infra-ts/stripe": "0.5.0",
+		"@infra-ts/stripe-projects": "0.5.0",
 		"@infra-ts/upstash": "0.5.0",
 		"@infra-ts/vercel": "0.5.0",
 		"@infra-ts/workos": "0.5.0"

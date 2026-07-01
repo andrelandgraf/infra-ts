@@ -22,6 +22,11 @@ import { SanityDataset } from "infra-ts/sanity";
 import { StatsigGate } from "infra-ts/statsig";
 import { DubDomain } from "infra-ts/dub";
 import { StripePrice, StripeWebhookEndpoint } from "infra-ts/stripe";
+import {
+	NeonPostgres as ProjectsNeonPostgres,
+	StripeProjectsService,
+	UpstashRedis as ProjectsUpstashRedis,
+} from "infra-ts/stripe-projects";
 import { PosthogProject } from "infra-ts/posthog";
 import { ElevenLabsAgent } from "infra-ts/elevenlabs";
 import { OpenAiServiceAccount } from "infra-ts/openai";
@@ -105,6 +110,26 @@ const webhook = new StripeWebhookEndpoint({
 });
 const whSecret: Ref<string> = webhook.env.stripeWebhookSecret;
 
+// ── stripe-projects: entities provisioned through Stripe Projects ──
+const projectsDb = new ProjectsNeonPostgres({ name: "db", tier: "launch" });
+const projectsCache = new ProjectsUpstashRedis({ name: "cache" });
+const projectsSearch = new StripeProjectsService({
+	name: "search",
+	provider: "algolia",
+	service: "application",
+	exposes: ["algoliaAppId", "algoliaApiKey"],
+});
+// Typed produced-env refs wire into any consumer, exactly like the REST providers.
+const projectsDbUrl: Ref<string> = projectsDb.env.databaseUrl;
+const projectsRedisTok: Ref<string> = projectsCache.env.redisRestToken;
+const webWithProjects = new VercelProject({
+	name: "web-projects",
+	team: vercelTeam.id,
+	env: { DATABASE_URL: projectsDb.env.databaseUrl },
+});
+// @ts-expect-error — `provider` is required on the generic service.
+new StripeProjectsService({ name: "x", service: "application" });
+
 const org = new WorkosOrganization({ name: "acme", domains: ["acme.com"] });
 const dataset = new SanityDataset({ name: "production", projectId: "p1" });
 const gate = new StatsigGate({ name: "new-checkout" });
@@ -146,6 +171,10 @@ const infra = defineInfra({
 		gate,
 		dubDomain,
 		agent,
+		projectsDb,
+		projectsCache,
+		projectsSearch,
+		webWithProjects,
 	],
 });
 
@@ -192,6 +221,9 @@ export {
 	gate,
 	dubDomain,
 	agent,
+	projectsDbUrl,
+	projectsRedisTok,
+	webWithProjects,
 	infra,
 	checkParseEnv,
 };

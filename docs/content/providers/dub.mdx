@@ -1,0 +1,35 @@
+---
+title: Dub
+description: Provision Dub short-link domains, tags, and links as typed infra-ts entities.
+sidebar:
+  label: Dub
+---
+
+Dub link-shortening domains, tags, and links.
+
+- **Import:** `import { DubDomain, DubLink } from "infra-ts/dub";`
+- **Credentials:** `DUB_API_KEY`.
+
+## Entities
+
+| Entity      | Provisions     | Key options                  | Env outputs      |
+| ----------- | -------------- | ---------------------------- | ---------------- |
+| `DubDomain` | A short domain | `slug?` (defaults to `name`) | —                |
+| `DubTag`    | A tag          | `color?`                     | —                |
+| `DubLink`   | A short link   | `url` · `domain?` · `key?`   | `DUB_SHORT_LINK` |
+
+## Example
+
+```ts
+import { defineInfra } from "infra-ts";
+import { DubDomain, DubLink } from "infra-ts/dub";
+
+const domain = new DubDomain({ name: "go.acme.com" });
+const link = new DubLink({
+	name: "launch",
+	url: "https://acme.com/launch",
+	domain: "go.acme.com",
+});
+
+export default defineInfra({ entities: [domain, link] });
+```
