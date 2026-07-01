@@ -20,12 +20,11 @@
 
   --blume-code-background: oklch(0.975 0.01 240);
 
+  /* Just the slightest hum of color — a soft glow, no grid. */
   --blume-background-decoration:
-    radial-gradient(46rem 30rem at 14% -10%, oklch(0.58 0.18 250 / 0.05), transparent 55%),
-    linear-gradient(oklch(0.55 0.06 235 / 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, oklch(0.55 0.06 235 / 0.05) 1px, transparent 1px);
-  --blume-background-decoration-repeat: no-repeat, repeat, repeat;
-  --blume-background-decoration-size: auto, 2.75rem 2.75rem, 2.75rem 2.75rem;
+    radial-gradient(64rem 44rem at 50% -26%, oklch(0.6 0.16 250 / 0.035), transparent 70%);
+  --blume-background-decoration-repeat: no-repeat;
+  --blume-background-decoration-size: auto;
 }
 
 /* ---- Dark ---- */
@@ -46,13 +45,11 @@
   --blume-code-highlight: oklch(0.76 0.16 240 / 0.14);
   --blume-code-highlight-border: oklch(0.76 0.16 240 / 0.5);
 
-  /* Barely-there grid with one soft glow — texture, not spectacle. */
+  /* Just the slightest hum of color — a soft glow, no grid. */
   --blume-background-decoration:
-    radial-gradient(52rem 34rem at 14% -12%, oklch(0.62 0.18 248 / 0.09), transparent 58%),
-    linear-gradient(oklch(0.7 0.09 232 / 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, oklch(0.7 0.09 232 / 0.05) 1px, transparent 1px);
-  --blume-background-decoration-repeat: no-repeat, repeat, repeat;
-  --blume-background-decoration-size: auto, 2.75rem 2.75rem, 2.75rem 2.75rem;
+    radial-gradient(70rem 48rem at 50% -26%, oklch(0.62 0.16 250 / 0.05), transparent 72%);
+  --blume-background-decoration-repeat: no-repeat;
+  --blume-background-decoration-size: auto;
 }
 
 /* Neon text selection — a small, pleasant cyber touch. */
@@ -61,12 +58,9 @@
   color: var(--blume-foreground);
 }
 
-/* Header hairline + a faint glow on just the logo mark. */
+/* Header hairline. */
 header.sticky {
   border-bottom: 1px solid var(--blume-border);
-}
-header a span[aria-hidden] svg {
-  filter: drop-shadow(0 0 4px color-mix(in oklab, var(--blume-accent) 45%, transparent));
 }
 
 /* Body links read in neon blue with a turquoise underline (no glow). Heading
@@ -79,22 +73,6 @@ header a span[aria-hidden] svg {
 /* Active nav / sidebar / TOC items get accent color (no glow). */
 [aria-current="page"] {
   color: var(--blume-accent) !important;
-}
-
-/* The one hero moment: a neon blue -> turquoise gradient page title. */
-.prose :where(h1) {
-  background-image: linear-gradient(
-    100deg,
-    var(--blume-accent),
-    var(--blume-action)
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  width: fit-content;
-}
-.prose :where(h1) a {
-  color: transparent;
 }
 
 /* Thin accent scrollbar (WebKit + Firefox) — subtle. */
