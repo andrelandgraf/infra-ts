@@ -1,0 +1,150 @@
+/*
+ * infra-ts cyberpunk theme — neon blue + turquoise.
+ * Highest-priority token overrides + a few tasteful glow accents.
+ * Dark mode is the hero; light mode stays crisp with the same neon accents.
+ */
+
+/* ---- Light ---- */
+:root {
+  --blume-background: oklch(0.99 0.004 240);
+  --blume-foreground: oklch(0.22 0.03 262);
+  --blume-muted: oklch(0.965 0.012 240);
+  --blume-muted-foreground: oklch(0.5 0.03 255);
+  --blume-border: oklch(0.62 0.09 232 / 0.32);
+
+  --blume-accent: oklch(0.58 0.18 250);
+  --blume-accent-foreground: oklch(1 0 0);
+  --blume-action: oklch(0.68 0.13 196);
+  --blume-action-foreground: oklch(0.16 0.03 258);
+
+  --blume-code-background: oklch(0.975 0.012 240);
+
+  --blume-background-decoration:
+    radial-gradient(52rem 34rem at 12% -8%, oklch(0.58 0.18 250 / 0.08), transparent 60%),
+    radial-gradient(44rem 32rem at 100% -4%, oklch(0.68 0.13 196 / 0.08), transparent 58%),
+    linear-gradient(oklch(0.62 0.09 232 / 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.62 0.09 232 / 0.16) 1px, transparent 1px);
+  --blume-background-decoration-repeat: no-repeat, no-repeat, repeat, repeat;
+  --blume-background-decoration-size: auto, auto, 2.5rem 2.5rem, 2.5rem 2.5rem;
+}
+
+/* ---- Dark (hero) ---- */
+:root[data-theme="dark"] {
+  --blume-background: oklch(0.16 0.028 262);
+  --blume-foreground: oklch(0.95 0.012 230);
+  --blume-muted: oklch(0.214 0.03 262);
+  --blume-muted-foreground: oklch(0.73 0.032 235);
+  --blume-border: oklch(0.72 0.13 222 / 0.26);
+
+  --blume-accent: oklch(0.76 0.16 240);
+  --blume-accent-foreground: oklch(0.15 0.03 262);
+  --blume-action: oklch(0.85 0.14 190);
+  --blume-action-foreground: oklch(0.15 0.03 262);
+
+  --blume-code-background: oklch(0.185 0.03 264);
+
+  --blume-code-highlight: oklch(0.76 0.16 240 / 0.16);
+  --blume-code-highlight-border: oklch(0.76 0.16 240 / 0.6);
+  --blume-code-word: oklch(0.85 0.14 190 / 0.2);
+  --blume-code-word-border: oklch(0.85 0.14 190 / 0.6);
+
+  --blume-background-decoration:
+    radial-gradient(58rem 38rem at 12% -10%, oklch(0.62 0.18 248 / 0.2), transparent 60%),
+    radial-gradient(48rem 36rem at 100% -6%, oklch(0.78 0.15 190 / 0.16), transparent 56%),
+    linear-gradient(oklch(0.72 0.13 222 / 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.72 0.13 222 / 0.15) 1px, transparent 1px);
+  --blume-background-decoration-repeat: no-repeat, no-repeat, repeat, repeat;
+  --blume-background-decoration-size: auto, auto, 2.5rem 2.5rem, 2.5rem 2.5rem;
+}
+
+/* Neon text selection. */
+::selection {
+  background: color-mix(in oklab, var(--blume-accent) 40%, transparent);
+  color: var(--blume-foreground);
+}
+
+/* Header: subtle neon hairline + glowing logo mark. */
+header.sticky {
+  border-bottom: 1px solid var(--blume-border);
+}
+header a span[aria-hidden] svg {
+  filter: drop-shadow(0 0 5px color-mix(in oklab, var(--blume-accent) 55%, transparent));
+}
+
+/* Cards pop: neon border + lift + glow on hover, glowing icons. */
+[data-blume-card] {
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.22s ease,
+    transform 0.18s ease;
+}
+[data-blume-card]:hover {
+  border-color: var(--blume-accent) !important;
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px var(--blume-accent),
+    0 18px 40px -22px color-mix(in oklab, var(--blume-accent) 85%, transparent);
+}
+[data-blume-card] .text-accent svg {
+  filter: drop-shadow(0 0 7px color-mix(in oklab, var(--blume-accent) 50%, transparent));
+}
+
+/* Prose links glow in neon blue with a turquoise underline. Heading-anchor
+   links are excluded so headings keep their own styling. */
+.prose :where(a):not([data-blume-card]):not(.blume-heading-anchor) {
+  color: var(--blume-accent);
+  text-decoration-color: color-mix(in oklab, var(--blume-action) 70%, transparent);
+}
+.prose :where(a):not([data-blume-card]):not(.blume-heading-anchor):hover {
+  text-shadow: 0 0 12px color-mix(in oklab, var(--blume-accent) 45%, transparent);
+}
+
+/* Page title pops with a neon blue -> turquoise gradient. */
+.prose :where(h1) {
+  background-image: linear-gradient(
+    100deg,
+    var(--blume-accent),
+    var(--blume-action)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  width: fit-content;
+}
+.prose :where(h1) a {
+  color: transparent;
+}
+
+/* Active nav / sidebar / TOC items go neon. */
+[aria-current="page"] {
+  color: var(--blume-accent) !important;
+  text-shadow: 0 0 12px color-mix(in oklab, var(--blume-accent) 40%, transparent);
+}
+
+/* Inline code reads in turquoise inside a neon-tinted pill. */
+.prose :not(pre) > code {
+  color: var(--blume-action);
+  border: 1px solid var(--blume-border);
+}
+
+/* Code blocks sit on a faint neon frame. */
+.prose :where(pre) {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--blume-accent) 14%, transparent),
+    0 20px 50px -30px color-mix(in oklab, var(--blume-accent) 70%, transparent);
+}
+
+/* Any accent-filled button (e.g. the primary npm CTA) gets a neon halo. */
+a[class*="bg-accent"],
+button[class*="bg-accent"] {
+  box-shadow: 0 0 18px -2px color-mix(in oklab, var(--blume-accent) 65%, transparent);
+}
+
+/* Neon scrollbar accents (WebKit). */
+* {
+  scrollbar-color: color-mix(in oklab, var(--blume-accent) 50%, transparent) transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--blume-accent) 45%, transparent);
+  border-radius: 999px;
+}

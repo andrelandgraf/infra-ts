@@ -4,6 +4,8 @@ export default defineConfig({
 	title: "infra-ts",
 	description:
 		"Typed, live-reconciled infrastructure and config as code for TypeScript.",
+	logo: "/logo.svg",
+	favicon: "/icon.svg",
 	content: {
 		root: "content",
 	},
@@ -75,15 +77,16 @@ export default defineConfig({
 		structuredData: true,
 	},
 	theme: {
-		accent: "cyan",
-		accentDark: "cyan",
+		accent: "oklch(0.58 0.18 250)",
+		accentDark: "oklch(0.76 0.16 240)",
+		action: "oklch(0.68 0.13 196)",
 		backgroundDecoration: "grid",
 		fonts: {
 			body: "inter",
 			display: "inter-tight",
 			mono: "ibm-plex-mono",
 		},
-		mode: "system",
+		mode: "dark",
 		radius: "md",
 	},
 });
