@@ -1,6 +1,6 @@
 {
 	"name": "infra-ts",
-	"version": "0.5.0",
+	"version": "0.5.1",
 	"description": "infra-ts — typed, live-reconciled infrastructure & config as code (no attribute state). An infra.ts file, a thin REST provider system, and a CLI/SDK for Neon, Vercel and beyond.",
 	"keywords": [
 		"infra-ts",
@@ -106,23 +106,23 @@
 		"jiti": "^2.7.0"
 	},
 	"devDependencies": {
-		"@infra-ts/core": "0.5.0",
-		"@infra-ts/dub": "0.5.0",
-		"@infra-ts/elevenlabs": "0.5.0",
-		"@infra-ts/mux": "0.5.0",
-		"@infra-ts/neon": "0.5.0",
-		"@infra-ts/openai": "0.5.0",
-		"@infra-ts/posthog": "0.5.0",
-		"@infra-ts/resend": "0.5.0",
-		"@infra-ts/runtime": "0.5.0",
-		"@infra-ts/sanity": "0.5.0",
-		"@infra-ts/sentry": "0.5.0",
-		"@infra-ts/statsig": "0.5.0",
-		"@infra-ts/stripe": "0.5.0",
-		"@infra-ts/stripe-projects": "0.5.0",
-		"@infra-ts/upstash": "0.5.0",
-		"@infra-ts/vercel": "0.5.0",
-		"@infra-ts/workos": "0.5.0"
+		"@infra-ts/core": "0.5.1",
+		"@infra-ts/dub": "0.5.1",
+		"@infra-ts/elevenlabs": "0.5.1",
+		"@infra-ts/mux": "0.5.1",
+		"@infra-ts/neon": "0.5.1",
+		"@infra-ts/openai": "0.5.1",
+		"@infra-ts/posthog": "0.5.1",
+		"@infra-ts/resend": "0.5.1",
+		"@infra-ts/runtime": "0.5.1",
+		"@infra-ts/sanity": "0.5.1",
+		"@infra-ts/sentry": "0.5.1",
+		"@infra-ts/statsig": "0.5.1",
+		"@infra-ts/stripe": "0.5.1",
+		"@infra-ts/stripe-projects": "0.5.1",
+		"@infra-ts/upstash": "0.5.1",
+		"@infra-ts/vercel": "0.5.1",
+		"@infra-ts/workos": "0.5.1"
 	},
 	"engines": {
 		"node": ">=20"

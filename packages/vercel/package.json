@@ -1,6 +1,6 @@
 {
 	"name": "@infra-ts/vercel",
-	"version": "0.5.0",
+	"version": "0.5.1",
 	"description": "infra-ts provider for Vercel — manage Vercel projects and environment variables as typed, live-reconciled config-as-code (no attribute state).",
 	"keywords": [
 		"infra-ts",
@@ -29,7 +29,7 @@
 		"typecheck": "tsc -p tsconfig.json --noEmit"
 	},
 	"dependencies": {
-		"@infra-ts/core": "0.5.0",
+		"@infra-ts/core": "0.5.1",
 		"zod": "^4.0.0"
 	},
 	"engines": {

@@ -7,6 +7,14 @@ changes both land in minor releases).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-07-01
+
+### Added
+
+- Added the `@infra-ts/stripe-projects` provider package and `infra-ts/stripe-projects` umbrella
+  export for declaring Stripe Projects-managed infrastructure.
+- Added provider-specific docs pages and refreshed the docs site styling/assets.
+
 ## [0.5.0] - 2026-07-01
 
 ### Added
@@ -130,7 +138,8 @@ deploy --prebuilt` CLI flow (content-hash idempotent, deployment id/URL captured
   state in `.infra.<env>`, `parseEnv`), the `plan`/`apply`/`status`/`checkout`/`destroy` engine, the
   CLI + SDK, and the Neon, Vercel, Upstash, Resend, and Mux providers.
 
-[Unreleased]: https://github.com/andrelandgraf/infra-ts/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/andrelandgraf/infra-ts/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/andrelandgraf/infra-ts/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/andrelandgraf/infra-ts/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/andrelandgraf/infra-ts/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/andrelandgraf/infra-ts/compare/v0.3.3...v0.4.0

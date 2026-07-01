@@ -1,6 +1,6 @@
 {
 	"name": "@infra-ts/runtime",
-	"version": "0.5.0",
+	"version": "0.5.1",
 	"description": "The infra-ts engine: load infra.ts, read/write the .infra link file, and plan/apply/destroy a config across providers with typed env and lifecycle hooks.",
 	"keywords": [
 		"infra-ts",
@@ -29,7 +29,7 @@
 		"typecheck": "tsc -p tsconfig.json --noEmit"
 	},
 	"dependencies": {
-		"@infra-ts/core": "0.5.0",
+		"@infra-ts/core": "0.5.1",
 		"jiti": "^2.7.0"
 	},
 	"engines": {

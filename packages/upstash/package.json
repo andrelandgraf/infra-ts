@@ -1,6 +1,6 @@
 {
 	"name": "@infra-ts/upstash",
-	"version": "0.5.0",
+	"version": "0.5.1",
 	"description": "infra-ts provider for Upstash — Redis, Vector, and QStash queues as typed, live-reconciled config-as-code.",
 	"keywords": [
 		"infra-ts",
@@ -31,7 +31,7 @@
 		"typecheck": "tsc -p tsconfig.json --noEmit"
 	},
 	"dependencies": {
-		"@infra-ts/core": "0.5.0",
+		"@infra-ts/core": "0.5.1",
 		"zod": "^4.0.0"
 	},
 	"engines": {
